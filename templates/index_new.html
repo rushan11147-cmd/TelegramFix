@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выживи до зарплаты</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial Black', Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+        
+        .game-container {
+            max-width: 400px;
+            width: 100%;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: background 0.5s ease;
+        }
+        
+        .game-header {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            padding: 15px 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .game-title {
+            font-size: 24px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 8px;
+        }
+        
+        .game-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .work-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5e6d8, #e8d5b7);
+            backdrop-filter: blur(5px);
+            position: relative;
+            transition: background 0.5s ease;
+        }
+        
+        .character-emoji {
+            font-size: 120px;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .work-button {
+            width: 250px;
+            height: 60px;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            border: 3px solid #fff;
+            border-radius: 15px;
+            font-size: 20px;
+            font-weight: 900;
+            color: white;
+            cursor: pointer;
+            margin-bottom: 20px;
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+            transition: all 0.3s;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .work-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.6);
+        }
+        
+        .work-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .motivational-text {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffa502;
+            margin: 10px 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 8px;
+        }
+        
+        .bottom-section {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .energy-section {
+            text-align: center;
+        }
+        
+        .energy-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 8px 0;
+            border: 2px solid #fff;
+        }
+        
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2ed573, #7bed9f);
+            transition: width 0.3s;
+            border-radius: 8px;
+        }
+        
+        .energy-text {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .next-day-button {
+            width: 100%;
+            height: 45px;
+            background: linear-gradient(135deg, #3742fa, #2f3542);
+            border: 2px solid #fff;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .next-day-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(55, 66, 250, 0.4);
+        }
+        
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+            max-width: 280px;
+            border: 3px solid #ff6b35;
+        }
+        
+        .popup-emoji {
+            font-size: 50px;
+            margin-bottom: 12px;
+        }
+        
+        .popup-text {
+            font-size: 16px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .popup-cost {
+            font-size: 24px;
+            font-weight: 900;
+            color: #ff4757;
+        }
+        
+        .popup-cost.positive {
+            color: #2ed573;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <div class="game-header">
+            <div class="game-title">Выживи до зарплаты</div>
+            <div class="game-stats">
+                <div>День: <span id="day">1</span> / <span id="maxDays">30</span></div>
+                <div>💰 Деньги: <span id="money">500</span>₽</div>
+            </div>
+        </div>
+        
+        <div class="work-section" id="workSection">
+            <div class="character-emoji" id="characterEmoji">☕</div>
+            <button class="work-button" id="workBtn">РАБОТАТЬ! 👨‍💻</button>
+            <div class="motivational-text" id="motivationalText">
+                Дожить до зарплаты и не уйти в минус!
+            </div>
+        </div>
+        
+        <div class="bottom-section">
+            <div class="energy-section">
+                <div class="energy-text">Энергия: <span id="energy">100</span> / <span id="maxEnergy">100</span></div>
+                <div class="energy-bar">
+                    <div class="energy-fill" id="energyFill" style="width: 100%"></div>
+                </div>
+            </div>
+            
+            <button class="next-day-button" id="nextDayBtn">Следующий день 🌅</button>
+        </div>
+    </div>
+    
+    <div class="popup" id="eventPopup">
+        <div class="popup-emoji" id="popupEmoji"></div>
+        <div class="popup-text" id="popupText"></div>
+        <div class="popup-cost" id="popupCost"></div>
+    </div>
+
+    <script>
+        let userId = 'demo_user';
+        let gameData = {};
+        
+        // Инициализация Telegram Web App
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            const tgUser = window.Telegram.WebApp.initDataUnsafe?.user;
+            if (tgUser && tgUser.id) {
+                userId = tgUser.id.toString();
+            } else {
+                userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            }
+        }
+        
+        async function loadUser() {
+            try {
+                const response = await fetch(`/api/user/${userId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                gameData = await response.json();
+                updateUI();
+            } catch (error) {
+                console.error('Ошибка загрузки пользователя:', error);
+                gameData = {
+                    money: 500,
+                    day: 1,
+                    max_days: 30,
+                    energy: 100,
+                    max_energy: 100,
+                    money_per_work: 50,
+                    last_event: null,
+                    last_event_time: 0,
+                    salary: 25000
+                };
+                updateUI();
+            }
+        }
+        
+        async function work() {
+            if (gameData.energy <= 0) {
+                alert('Нет энергии! Переходи к следующему дню.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/work', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+                
+                gameData = result.user;
+                updateUI();
+                
+                if (result.event) {
+                    showEvent(result.event);
+                }
+                
+            } catch (error) {
+                console.error('Ошибка работы:', error);
+            }
+        }
+        
+        async function nextDay() {
+            try {
+                const response = await fetch('/api/next_day', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                const result = await response.json();
+                gameData = result.user;
+                updateUI();
+                
+                if (result.salary_received) {
+                    alert(result.message);
+                } else if (result.message) {
+                    alert(result.message);
+                }
+                
+            } catch (error) {
+                console.error('Ошибка перехода к следующему дню:', error);
+            }
+        }
+        
+        function updateUI() {
+            document.getElementById('day').textContent = gameData.day;
+            document.getElementById('maxDays').textContent = gameData.max_days;
+            document.getElementById('money').textContent = gameData.money;
+            document.getElementById('energy').textContent = gameData.energy;
+            document.getElementById('maxEnergy').textContent = gameData.max_energy;
+            
+            const energyPercent = (gameData.energy / gameData.max_energy) * 100;
+            document.getElementById('energyFill').style.width = `${energyPercent}%`;
+            
+            const workBtn = document.getElementById('workBtn');
+            workBtn.disabled = gameData.energy <= 0;
+            
+            updateBackground();
+        }
+        
+        function updateBackground() {
+            const workSection = document.getElementById('workSection');
+            const characterEmoji = document.getElementById('characterEmoji');
+            
+            // Определяем сцену и эмодзи
+            if (gameData.energy < 30) {
+                // Вечер - устал
+                workSection.style.background = 'linear-gradient(135deg, #4a4a4a, #333333)';
+                characterEmoji.textContent = '🍺';
+            } else if (gameData.day <= 10) {
+                // Утро дома
+                workSection.style.background = 'linear-gradient(135deg, #f5e6d8, #e8d5b7)';
+                characterEmoji.textContent = '☕';
+            } else if (gameData.day <= 20) {
+                // На работе
+                workSection.style.background = 'linear-gradient(135deg, #f5f5f5, #e0e0e0)';
+                characterEmoji.textContent = '💻';
+            } else {
+                // Поздний вечер
+                workSection.style.background = 'linear-gradient(135deg, #4a4a4a, #333333)';
+                characterEmoji.textContent = '😴';
+            }
+        }
+        
+        function showEvent(event) {
+            document.getElementById('popupEmoji').textContent = event.emoji;
+            document.getElementById('popupText').textContent = event.text;
+            
+            const costElement = document.getElementById('popupCost');
+            const cost = event.cost;
+            costElement.textContent = cost > 0 ? `+${cost}₽` : `${cost}₽`;
+            costElement.className = cost > 0 ? 'popup-cost positive' : 'popup-cost';
+            
+            document.getElementById('eventPopup').style.display = 'block';
+            
+            setTimeout(() => {
+                document.getElementById('eventPopup').style.display = 'none';
+            }, 3000);
+        }
+        
+        // Обработчики событий
+        document.getElementById('workBtn').addEventListener('click', work);
+        document.getElementById('nextDayBtn').addEventListener('click', nextDay);
+        
+        document.getElementById('eventPopup').addEventListener('click', () => {
+            document.getElementById('eventPopup').style.display = 'none';
+        });
+        
+        // Загружаем данные при старте
+        loadUser();
+    </script>
+</body>
+</html>

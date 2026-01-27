@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Выживи до зарплаты</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial Black', Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+        
+        .game-container {
+            max-width: 400px;
+            width: 100%;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: background 0.5s ease;
+        }
+        
+        .game-header {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            padding: 15px 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .game-title {
+            font-size: 24px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 8px;
+        }
+        
+        .game-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .work-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5e6d8, #e8d5b7);
+            backdrop-filter: blur(5px);
+            position: relative;
+            transition: background 0.5s ease;
+        }
+        
+        .character-emoji {
+            font-size: 120px;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .work-button {
+            width: 250px;
+            height: 60px;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            border: 3px solid #fff;
+            border-radius: 15px;
+            font-size: 20px;
+            font-weight: 900;
+            color: white;
+            cursor: pointer;
+            margin-bottom: 20px;
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+            transition: all 0.3s;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .work-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.6);
+        }
+        
+        .work-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .motivational-text {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffa502;
+            margin: 10px 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 8px;
+        }
+        
+        .bottom-section {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .energy-section {
+            text-align: center;
+        }
+        
+        .energy-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 8px 0;
+            border: 2px solid #fff;
+        }
+        
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2ed573, #7bed9f);
+            transition: width 0.3s;
+            border-radius: 8px;
+        }
+        
+        .energy-text {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .next-day-button {
+            width: 100%;
+            height: 45px;
+            background: linear-gradient(135deg, #3742fa, #2f3542);
+            border: 2px solid #fff;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .next-day-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(55, 66, 250, 0.4);
+        }
+        
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+            max-width: 280px;
+            border: 3px solid #ff6b35;
+        }
+        
+        .popup-emoji {
+            font-size: 50px;
+            margin-bottom: 12px;
+        }
+        
+        .popup-text {
+            font-size: 16px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .popup-cost {
+            font-size: 24px;
+            font-weight: 900;
+            color: #ff4757;
+        }
+        
+        .popup-cost.positive {
+            color: #2ed573;
+        }
+        
+        /* Стили для выбора черт личности */
+        .trait-selection {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            padding: 20px;
+        }
+        
+        .trait-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+        
+        .trait-header h2 {
+            font-size: 24px;
+            font-weight: 900;
+            color: #ff6b35;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .trait-header p {
+            font-size: 14px;
+            color: #bdc3c7;
+            font-weight: bold;
+        }
+        
+        .traits-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex: 1;
+        }
+        
+        .trait-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #ff6b35;
+            border-radius: 15px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(5px);
+        }
+        
+        .trait-card:hover {
+            background: rgba(255, 107, 53, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.3);
+        }
+        
+        .trait-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .trait-emoji {
+            font-size: 40px;
+            margin-right: 15px;
+        }
+        
+        .trait-name {
+            font-size: 20px;
+            font-weight: 900;
+            color: #fff;
+        }
+        
+        .trait-description {
+            font-size: 14px;
+            color: #ecf0f1;
+            line-height: 1.4;
+            font-weight: bold;
+        }
+        
+        .trait-display {
+            font-size: 12px;
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        /* Стили для выбора работы */
+        .job-selector {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .current-job {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .jobs-button, .shop-button {
+            width: 100%;
+            height: 40px;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            border: 2px solid #fff;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .jobs-button:hover, .shop-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+        }
+        
+        /* Модальные окна */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: #2c3e50;
+            border-radius: 15px;
+            max-width: 350px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 3px solid #ff6b35;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: white;
+            font-size: 18px;
+            font-weight: 900;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .jobs-list, .boosters-list {
+            padding: 20px;
+        }
+        
+        .job-item, .booster-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #34495e;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .job-item:hover, .booster-item:hover {
+            background: rgba(255, 107, 53, 0.2);
+            border-color: #ff6b35;
+            transform: translateY(-2px);
+        }
+        
+        .job-item.locked, .booster-item.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .job-item.locked:hover, .booster-item.locked:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #34495e;
+            transform: none;
+        }
+        
+        .item-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .item-emoji {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        
+        .item-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            flex: 1;
+        }
+        
+        .item-income, .item-cost {
+            font-size: 14px;
+            font-weight: bold;
+            color: #2ed573;
+        }
+        
+        .item-cost {
+            color: #ff6b35;
+        }
+        
+        .item-description {
+            font-size: 12px;
+            color: #bdc3c7;
+            margin-top: 5px;
+        }
+        
+        .item-stats {
+            font-size: 12px;
+            color: #f39c12;
+            margin-top: 5px;
+        }
+        
+        /* Стили для кнопок магазинов */
+        .shop-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        /* Стили для модального окна кредита */
+        .item-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .payment-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .payment-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #34495e;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .payment-btn.active {
+            background: rgba(255, 107, 53, 0.3);
+            border-color: #ff6b35;
+        }
+        
+        .credit-details {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #ecf0f1;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #34495e;
+            border-radius: 5px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .form-group span {
+            font-size: 12px;
+            color: #f39c12;
+            margin-top: 5px;
+            display: block;
+        }
+        
+        .credit-calculation {
+            background: rgba(255, 107, 53, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ff6b35;
+        }
+        
+        .buy-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #2ed573, #7bed9f);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .buy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(46, 213, 115, 0.4);
+        }
+        
+        .buy-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* Стили для отображения владения */
+        .item-owned {
+            background: rgba(46, 213, 115, 0.2) !important;
+            border-color: #2ed573 !important;
+        }
+        
+        .item-owned .item-stats {
+            color: #2ed573;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <!-- Экран выбора черты личности -->
+        <div class="trait-selection" id="traitSelection" style="display: none;">
+            <div class="trait-header">
+                <h2>Выбери свою черту личности</h2>
+                <p>Черта будет влиять на всю игру и не может быть изменена!</p>
+            </div>
+            <div class="traits-grid" id="traitsGrid">
+                <!-- Черты будут загружены динамически -->
+            </div>
+        </div>
+        
+        <!-- Основной игровой экран -->
+        <div class="main-game" id="mainGame">
+            <div class="game-header">
+                <div class="game-title">Выживи до зарплаты</div>
+                <div class="game-stats">
+                    <div>День: <span id="day">1</span> / <span id="maxDays">30</span></div>
+                    <div>💰 Деньги: <span id="money">500</span>₽</div>
+                    <div class="trait-display" id="traitDisplay" style="display: none;">
+                        <span id="traitEmoji"></span> <span id="traitName"></span>
+                    </div>
+                </div>
+            </div>
+        
+        <div class="work-section" id="workSection">
+            <div class="character-emoji" id="characterEmoji">☕</div>
+            
+            <!-- Выбор работы -->
+            <div class="job-selector" id="jobSelector">
+                <div class="current-job" id="currentJob">
+                    <span id="currentJobEmoji">🛵</span>
+                    <span id="currentJobName">Доставка еды</span>
+                </div>
+                <button class="jobs-button" id="jobsBtn">Сменить работу 💼</button>
+            </div>
+            
+            <button class="work-button" id="workBtn">РАБОТАТЬ! 👨‍💻</button>
+            
+            <div class="motivational-text" id="motivationalText">
+                Дожить до зарплаты и не уйти в минус!
+            </div>
+        </div>
+        
+        <div class="bottom-section">
+            <div class="energy-section">
+                <div class="energy-text">Энергия: <span id="energy">100</span> / <span id="maxEnergy">100</span></div>
+                <div class="energy-bar">
+                    <div class="energy-fill" id="energyFill" style="width: 100%"></div>
+                </div>
+            </div>
+            
+            <button class="next-day-button" id="nextDayBtn">Следующий день 🌅</button>
+            
+            <div class="shop-buttons">
+                <button class="shop-button" id="shopBtn">Бустеры 🛒</button>
+                <button class="shop-button" id="carsBtn">Машины 🚗</button>
+                <button class="shop-button" id="realEstateBtn">Недвижимость 🏠</button>
+            </div>
+        </div>
+        </div>
+    </div>
+    
+    <div class="popup" id="eventPopup">
+        <div class="popup-emoji" id="popupEmoji"></div>
+        <div class="popup-text" id="popupText"></div>
+        <div class="popup-cost" id="popupCost"></div>
+    </div>
+    
+    <!-- Модальное окно выбора работы -->
+    <div class="modal" id="jobsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Выбери работу</h3>
+                <button class="close-btn" id="closeJobsModal">&times;</button>
+            </div>
+            <div class="jobs-list" id="jobsList">
+                <!-- Работы будут загружены динамически -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно магазина -->
+    <div class="modal" id="shopModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Магазин бустеров</h3>
+                <button class="close-btn" id="closeShopModal">&times;</button>
+            </div>
+            <div class="boosters-list" id="boostersList">
+                <!-- Бустеры будут загружены динамически -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно машин -->
+    <div class="modal" id="carsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Автосалон</h3>
+                <button class="close-btn" id="closeCarsModal">&times;</button>
+            </div>
+            <div class="cars-list" id="carsList">
+                <!-- Машины будут загружены динамически -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно недвижимости -->
+    <div class="modal" id="realEstateModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Агентство недвижимости</h3>
+                <button class="close-btn" id="closeRealEstateModal">&times;</button>
+            </div>
+            <div class="real-estate-list" id="realEstateList">
+                <!-- Недвижимость будет загружена динамически -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно кредита -->
+    <div class="modal" id="creditModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="creditModalTitle">Оформление кредита</h3>
+                <button class="close-btn" id="closeCreditModal">&times;</button>
+            </div>
+            <div class="credit-form" id="creditForm">
+                <div class="item-info" id="creditItemInfo"></div>
+                <div class="payment-options">
+                    <button class="payment-btn active" id="cashBtn">Наличные 💰</button>
+                    <button class="payment-btn" id="creditBtn">Кредит 🏦</button>
+                </div>
+                <div class="credit-details" id="creditDetails" style="display: none;">
+                    <div class="form-group">
+                        <label>Первоначальный взнос:</label>
+                        <input type="number" id="downPayment" min="0">
+                        <span id="minDownPayment"></span>
+                    </div>
+                    <div class="form-group">
+                        <label>Срок (месяцев):</label>
+                        <input type="number" id="termMonths" min="12" max="300" value="24">
+                    </div>
+                    <div class="credit-calculation" id="creditCalculation"></div>
+                </div>
+                <button class="buy-btn" id="confirmPurchase">Купить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Диагностика для мобильных устройств
+        console.log('Telegram WebApp доступен:', !!window.Telegram?.WebApp);
+        console.log('User Agent:', navigator.userAgent);
+        console.log('Screen size:', window.screen.width + 'x' + window.screen.height);
+        
+        let userId = 'demo_user';
+        let gameData = {};
+        let traits = {};
+        let jobs = {};
+        let boosters = {};
+        let cars = {};
+        let realEstate = {};
+        let creditTypes = {};
+        let currentPurchaseItem = null;
+        let currentPurchaseType = null;
+        
+        // Инициализация Telegram Web App
+        if (window.Telegram && window.Telegram.WebApp) {
+            console.log('Инициализация Telegram WebApp...');
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            
+            // Настройка темы
+            document.body.style.backgroundColor = tg.backgroundColor || '#1a1a2e';
+            
+            const tgUser = tg.initDataUnsafe?.user;
+            if (tgUser && tgUser.id) {
+                userId = tgUser.id.toString();
+                console.log('Telegram User ID:', userId);
+            } else {
+                userId = 'user_' + Math.random().toString(36).substr(2, 9);
+                console.log('Demo User ID:', userId);
+            }
+            
+            // Показать кнопку "Назад" если нужно
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+                tg.close();
+            });
+        } else {
+            console.log('Telegram WebApp не доступен, используем demo режим');
+            userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        async function loadTraits() {
+            try {
+                const response = await fetch('/api/traits');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                traits = await response.json();
+                displayTraits();
+            } catch (error) {
+                console.error('Ошибка загрузки черт:', error);
+            }
+        }
+        
+        async function loadJobs() {
+            try {
+                const response = await fetch('/api/jobs');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                jobs = await response.json();
+            } catch (error) {
+                console.error('Ошибка загрузки работ:', error);
+            }
+        }
+        
+        async function loadBoosters() {
+            try {
+                console.log('Загружаем бустеры...');
+                const response = await fetch('/api/boosters');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                boosters = await response.json();
+                console.log('Бустеры загружены:', boosters);
+            } catch (error) {
+                console.error('Ошибка загрузки бустеров:', error);
+            }
+        }
+        
+        async function loadCars() {
+            try {
+                const response = await fetch('/api/cars');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                cars = await response.json();
+            } catch (error) {
+                console.error('Ошибка загрузки машин:', error);
+            }
+        }
+        
+        async function loadRealEstate() {
+            try {
+                const response = await fetch('/api/real_estate');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                realEstate = await response.json();
+            } catch (error) {
+                console.error('Ошибка загрузки недвижимости:', error);
+            }
+        }
+        
+        async function loadCreditTypes() {
+            try {
+                const response = await fetch('/api/credit_types');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                creditTypes = await response.json();
+            } catch (error) {
+                console.error('Ошибка загрузки типов кредитов:', error);
+            }
+        }
+        
+        function displayTraits() {
+            const traitsGrid = document.getElementById('traitsGrid');
+            traitsGrid.innerHTML = '';
+            
+            Object.keys(traits).forEach(traitId => {
+                const trait = traits[traitId];
+                const traitCard = document.createElement('div');
+                traitCard.className = 'trait-card';
+                traitCard.onclick = () => selectTrait(traitId);
+                
+                traitCard.innerHTML = `
+                    <div class="trait-card-header">
+                        <div class="trait-emoji">${trait.emoji}</div>
+                        <div class="trait-name">${trait.name}</div>
+                    </div>
+                    <div class="trait-description">${trait.description}</div>
+                `;
+                
+                traitsGrid.appendChild(traitCard);
+            });
+        }
+        
+        async function selectTrait(traitId) {
+            try {
+                const response = await fetch('/api/select_trait', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        user_id: userId,
+                        trait_id: traitId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+                
+                gameData = result.user;
+                
+                // Загружаем все данные для игры
+                await loadJobs();
+                await loadBoosters();
+                await loadCars();
+                await loadRealEstate();
+                await loadCreditTypes();
+                
+                // Скрываем экран выбора черт и показываем игру
+                document.getElementById('traitSelection').style.display = 'none';
+                document.getElementById('mainGame').style.display = 'block';
+                
+                updateUI();
+                
+            } catch (error) {
+                console.error('Ошибка выбора черты:', error);
+            }
+        }
+        
+        async function loadUser() {
+            try {
+                console.log('Загружаем пользователя:', userId);
+                const response = await fetch(`/api/user/${userId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                gameData = await response.json();
+                console.log('Данные пользователя загружены:', gameData);
+                
+                // Проверяем, выбрана ли черта личности
+                if (!gameData.trait_selected) {
+                    console.log('Черта не выбрана, показываем экран выбора');
+                    // Показываем экран выбора черт
+                    document.getElementById('traitSelection').style.display = 'block';
+                    document.getElementById('mainGame').style.display = 'none';
+                    await loadTraits();
+                } else {
+                    console.log('Черта выбрана, показываем игру');
+                    // Показываем основную игру
+                    document.getElementById('traitSelection').style.display = 'none';
+                    document.getElementById('mainGame').style.display = 'block';
+                    // Загружаем черты для отображения выбранной черты
+                    await loadTraits();
+                    await loadJobs();
+                    await loadBoosters();
+                    await loadCars();
+                    await loadRealEstate();
+                    await loadCreditTypes();
+                    updateUI();
+                }
+                
+            } catch (error) {
+                console.error('Ошибка загрузки пользователя:', error);
+                // Показываем сообщение об ошибке
+                alert('Ошибка загрузки игры. Проверьте подключение к интернету.');
+                
+                // Создаем пользователя по умолчанию
+                gameData = {
+                    money: 500,
+                    day: 1,
+                    max_days: 30,
+                    energy: 100,
+                    max_energy: 100,
+                    money_per_work: 50,
+                    last_event: null,
+                    last_event_time: 0,
+                    salary: 25000,
+                    trait: null,
+                    trait_selected: false,
+                    current_job: 'delivery',
+                    unlocked_jobs: ['delivery'],
+                    boosters: {},
+                    owned_items: [],
+                    cars: [],
+                    real_estate: [],
+                    credits: [],
+                    monthly_income: 0,
+                    monthly_expenses: 0
+                };
+                
+                // Показываем экран выбора черт для нового пользователя
+                document.getElementById('traitSelection').style.display = 'block';
+                document.getElementById('mainGame').style.display = 'none';
+                await loadTraits();
+                await loadJobs();
+                await loadBoosters();
+                await loadCars();
+                await loadRealEstate();
+                await loadCreditTypes();
+            }
+        }
+        
+        function showJobsModal() {
+            const jobsList = document.getElementById('jobsList');
+            jobsList.innerHTML = '';
+            
+            Object.keys(jobs).forEach(jobId => {
+                const job = jobs[jobId];
+                const isUnlocked = gameData.unlocked_jobs && gameData.unlocked_jobs.includes(jobId);
+                const isCurrent = gameData.current_job === jobId;
+                
+                const jobItem = document.createElement('div');
+                jobItem.className = `job-item ${!isUnlocked ? 'locked' : ''} ${isCurrent ? 'current' : ''}`;
+                
+                if (isUnlocked && !isCurrent) {
+                    jobItem.onclick = () => changeJob(jobId);
+                }
+                
+                jobItem.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-emoji">${job.emoji}</div>
+                        <div class="item-name">${job.name}</div>
+                        <div class="item-income">+${job.base_income}₽</div>
+                    </div>
+                    <div class="item-description">${job.description}</div>
+                    <div class="item-stats">Энергия: -${job.energy_cost} | ${isUnlocked ? (isCurrent ? 'Текущая работа' : 'Доступно') : `Откроется на ${job.unlock_day} день`}</div>
+                `;
+                
+                jobsList.appendChild(jobItem);
+            });
+            
+            document.getElementById('jobsModal').style.display = 'flex';
+        }
+        
+        function showShopModal() {
+            console.log('Открываем магазин');
+            console.log('Бустеры:', boosters);
+            console.log('Данные игрока:', gameData);
+            
+            const boostersList = document.getElementById('boostersList');
+            boostersList.innerHTML = '';
+            
+            if (!boosters || Object.keys(boosters).length === 0) {
+                boostersList.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">Загрузка бустеров...</div>';
+                document.getElementById('shopModal').style.display = 'flex';
+                return;
+            }
+            
+            Object.keys(boosters).forEach(boosterId => {
+                const booster = boosters[boosterId];
+                const canAfford = gameData.money >= booster.cost;
+                const isOwned = gameData.owned_items && gameData.owned_items.includes(boosterId);
+                
+                // Применяем скидку для черты "Экономный"
+                let cost = booster.cost;
+                if (gameData.trait === 'экономный') {
+                    cost = Math.floor(cost * 0.9);
+                }
+                
+                const boosterItem = document.createElement('div');
+                boosterItem.className = `booster-item ${!canAfford ? 'locked' : ''} ${isOwned ? 'owned' : ''}`;
+                
+                if (canAfford && !isOwned) {
+                    boosterItem.onclick = () => buyBooster(boosterId);
+                }
+                
+                boosterItem.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-emoji">${booster.emoji}</div>
+                        <div class="item-name">${booster.name}</div>
+                        <div class="item-cost">${cost}₽</div>
+                    </div>
+                    <div class="item-description">${booster.description}</div>
+                    <div class="item-stats">${isOwned ? 'Куплено' : (canAfford ? 'Доступно' : 'Недостаточно денег')}</div>
+                `;
+                
+                boostersList.appendChild(boosterItem);
+            });
+            
+            document.getElementById('shopModal').style.display = 'flex';
+        }
+        
+        function showCarsModal() {
+            const carsList = document.getElementById('carsList');
+            carsList.innerHTML = '';
+            
+            if (!cars || Object.keys(cars).length === 0) {
+                carsList.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">Загрузка машин...</div>';
+                document.getElementById('carsModal').style.display = 'flex';
+                return;
+            }
+            
+            Object.keys(cars).forEach(carId => {
+                const car = cars[carId];
+                const isOwned = gameData.cars && gameData.cars.includes(carId);
+                
+                const carItem = document.createElement('div');
+                carItem.className = `job-item ${isOwned ? 'item-owned' : ''}`;
+                
+                if (!isOwned) {
+                    carItem.onclick = () => showCreditModal(carId, 'car');
+                }
+                
+                carItem.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-emoji">${car.emoji}</div>
+                        <div class="item-name">${car.name}</div>
+                        <div class="item-cost">${car.price.toLocaleString()}₽</div>
+                    </div>
+                    <div class="item-description">${car.description}</div>
+                    <div class="item-stats">
+                        ${isOwned ? 'В собственности' : `Доход +${Math.round(car.income_bonus * 100)}% | Расходы: ${car.monthly_cost}₽/мес`}
+                    </div>
+                `;
+                
+                carsList.appendChild(carItem);
+            });
+            
+            document.getElementById('carsModal').style.display = 'flex';
+        }
+        
+        function showRealEstateModal() {
+            const realEstateList = document.getElementById('realEstateList');
+            realEstateList.innerHTML = '';
+            
+            if (!realEstate || Object.keys(realEstate).length === 0) {
+                realEstateList.innerHTML = '<div style="color: white; text-align: center; padding: 20px;">Загрузка недвижимости...</div>';
+                document.getElementById('realEstateModal').style.display = 'flex';
+                return;
+            }
+            
+            Object.keys(realEstate).forEach(propertyId => {
+                const property = realEstate[propertyId];
+                const isOwned = gameData.real_estate && gameData.real_estate.includes(propertyId);
+                
+                const propertyItem = document.createElement('div');
+                propertyItem.className = `job-item ${isOwned ? 'item-owned' : ''}`;
+                
+                if (!isOwned) {
+                    propertyItem.onclick = () => showCreditModal(propertyId, 'real_estate');
+                }
+                
+                const monthlyNet = property.monthly_income - Math.abs(property.monthly_cost);
+                
+                propertyItem.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-emoji">${property.emoji}</div>
+                        <div class="item-name">${property.name}</div>
+                        <div class="item-cost">${property.price.toLocaleString()}₽</div>
+                    </div>
+                    <div class="item-description">${property.description}</div>
+                    <div class="item-stats">
+                        ${isOwned ? 'В собственности' : `Доход: ${monthlyNet > 0 ? '+' : ''}${monthlyNet}₽/мес | ${property.type === 'residential' ? 'Жилая' : 'Коммерческая'}`}
+                    </div>
+                `;
+                
+                realEstateList.appendChild(propertyItem);
+            });
+            
+            document.getElementById('realEstateModal').style.display = 'flex';
+        }
+        
+        function showCreditModal(itemId, itemType) {
+            currentPurchaseItem = itemId;
+            currentPurchaseType = itemType;
+            
+            const item = itemType === 'car' ? cars[itemId] : realEstate[itemId];
+            const creditType = itemType === 'car' ? creditTypes.car_loan : creditTypes.mortgage;
+            
+            document.getElementById('creditModalTitle').textContent = 
+                itemType === 'car' ? 'Покупка автомобиля' : 'Покупка недвижимости';
+            
+            document.getElementById('creditItemInfo').innerHTML = `
+                <div class="item-header">
+                    <div class="item-emoji">${item.emoji}</div>
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-cost">${item.price.toLocaleString()}₽</div>
+                </div>
+                <div class="item-description">${item.description}</div>
+            `;
+            
+            // Настройка формы кредита
+            const minDown = Math.floor(item.price * creditType.min_down_payment);
+            document.getElementById('downPayment').min = minDown;
+            document.getElementById('downPayment').value = minDown;
+            document.getElementById('minDownPayment').textContent = `Минимум: ${minDown.toLocaleString()}₽`;
+            document.getElementById('termMonths').max = creditType.max_term;
+            
+            // Сброс к наличным
+            document.getElementById('cashBtn').classList.add('active');
+            document.getElementById('creditBtn').classList.remove('active');
+            document.getElementById('creditDetails').style.display = 'none';
+            
+            updateCreditCalculation();
+            document.getElementById('creditModal').style.display = 'flex';
+        }
+        
+        function updateCreditCalculation() {
+            if (!currentPurchaseItem || !currentPurchaseType) return;
+            
+            const item = currentPurchaseType === 'car' ? cars[currentPurchaseItem] : realEstate[currentPurchaseItem];
+            const creditType = currentPurchaseType === 'car' ? creditTypes.car_loan : creditTypes.mortgage;
+            const isCredit = document.getElementById('creditBtn').classList.contains('active');
+            
+            if (!isCredit) {
+                document.getElementById('confirmPurchase').textContent = `Купить за ${item.price.toLocaleString()}₽`;
+                return;
+            }
+            
+            const downPayment = parseInt(document.getElementById('downPayment').value) || 0;
+            const termMonths = parseInt(document.getElementById('termMonths').value) || 24;
+            const loanAmount = item.price - downPayment;
+            
+            if (loanAmount <= 0) {
+                document.getElementById('creditCalculation').innerHTML = 'Сумма кредита: 0₽';
+                document.getElementById('confirmPurchase').textContent = `Купить за ${downPayment.toLocaleString()}₽`;
+                return;
+            }
+            
+            const monthlyRate = creditType.rate / 12;
+            const monthlyPayment = Math.floor(loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1));
+            const totalPayment = monthlyPayment * termMonths;
+            const overpayment = totalPayment - loanAmount;
+            
+            document.getElementById('creditCalculation').innerHTML = `
+                <div>Сумма кредита: ${loanAmount.toLocaleString()}₽</div>
+                <div>Ежемесячный платеж: ${monthlyPayment.toLocaleString()}₽</div>
+                <div>Переплата: ${overpayment.toLocaleString()}₽</div>
+                <div>Ставка: ${Math.round(creditType.rate * 100)}% годовых</div>
+            `;
+            
+            document.getElementById('confirmPurchase').textContent = `Купить (взнос: ${downPayment.toLocaleString()}₽)`;
+        }
+        
+        async function changeJob(jobId) {
+            try {
+                const response = await fetch('/api/change_job', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        user_id: userId,
+                        job_id: jobId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+                
+                gameData = result.user;
+                updateUI();
+                document.getElementById('jobsModal').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Ошибка смены работы:', error);
+            }
+        }
+        
+        async function buyBooster(boosterId) {
+            try {
+                const response = await fetch('/api/buy_booster', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        user_id: userId,
+                        booster_id: boosterId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+                
+                gameData = result.user;
+                updateUI();
+                showShopModal(); // Обновляем магазин
+                
+                // Показываем уведомление о покупке
+                alert(`Куплено: ${result.booster.name} за ${result.cost}₽`);
+                
+            } catch (error) {
+                console.error('Ошибка покупки бустера:', error);
+            }
+        }
+        
+        async function confirmPurchase() {
+            if (!currentPurchaseItem || !currentPurchaseType) return;
+            
+            const isCredit = document.getElementById('creditBtn').classList.contains('active');
+            const downPayment = parseInt(document.getElementById('downPayment').value) || 0;
+            const termMonths = parseInt(document.getElementById('termMonths').value) || 24;
+            
+            const endpoint = currentPurchaseType === 'car' ? '/api/buy_car' : '/api/buy_real_estate';
+            const paymentType = isCredit ? (currentPurchaseType === 'car' ? 'credit' : 'mortgage') : 'cash';
+            
+            try {
+                const requestData = {
+                    user_id: userId,
+                    [currentPurchaseType === 'car' ? 'car_id' : 'property_id']: currentPurchaseItem,
+                    payment_type: paymentType
+                };
+                
+                if (isCredit) {
+                    requestData.down_payment = downPayment;
+                    requestData.term_months = termMonths;
+                }
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+                
+                gameData = result.user;
+                updateUI();
+                
+                // Закрываем модальные окна
+                document.getElementById('creditModal').style.display = 'none';
+                document.getElementById('carsModal').style.display = 'none';
+                document.getElementById('realEstateModal').style.display = 'none';
+                
+                // Показываем уведомление
+                const item = currentPurchaseType === 'car' ? cars[currentPurchaseItem] : realEstate[currentPurchaseItem];
+                let message = `Куплено: ${item.name}`;
+                
+                if (isCredit) {
+                    message += `\nВзнос: ${result.down_payment?.toLocaleString() || downPayment.toLocaleString()}₽`;
+                    message += `\nЕжемесячный платеж: ${result.monthly_payment?.toLocaleString()}₽`;
+                } else {
+                    message += `\nСтоимость: ${result.cost?.toLocaleString()}₽`;
+                }
+                
+                alert(message);
+                
+                // Сбрасываем текущую покупку
+                currentPurchaseItem = null;
+                currentPurchaseType = null;
+                
+            } catch (error) {
+                console.error('Ошибка покупки:', error);
+            }
+        }
+        
+        async function work() {
+            if (gameData.energy <= 0) {
+                alert('Нет энергии! Переходи к следующему дню.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/work', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+                
+                gameData = result.user;
+                updateUI();
+                
+                if (result.event) {
+                    showEvent(result.event);
+                }
+                
+            } catch (error) {
+                console.error('Ошибка работы:', error);
+            }
+        }
+        
+        async function nextDay() {
+            try {
+                const response = await fetch('/api/next_day', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                const result = await response.json();
+                gameData = result.user;
+                updateUI();
+                
+                if (result.salary_received) {
+                    alert(result.message);
+                } else if (result.message) {
+                    alert(result.message);
+                }
+                
+            } catch (error) {
+                console.error('Ошибка перехода к следующему дню:', error);
+            }
+        }
+        
+        function updateUI() {
+            document.getElementById('day').textContent = gameData.day;
+            document.getElementById('maxDays').textContent = gameData.max_days;
+            document.getElementById('money').textContent = gameData.money;
+            document.getElementById('energy').textContent = gameData.energy;
+            document.getElementById('maxEnergy').textContent = gameData.max_energy;
+            
+            const energyPercent = (gameData.energy / gameData.max_energy) * 100;
+            document.getElementById('energyFill').style.width = `${energyPercent}%`;
+            
+            const workBtn = document.getElementById('workBtn');
+            workBtn.disabled = gameData.energy <= 0;
+            
+            // Отображаем выбранную черту
+            if (gameData.trait && traits[gameData.trait]) {
+                const traitDisplay = document.getElementById('traitDisplay');
+                const traitEmoji = document.getElementById('traitEmoji');
+                const traitName = document.getElementById('traitName');
+                
+                traitEmoji.textContent = traits[gameData.trait].emoji;
+                traitName.textContent = traits[gameData.trait].name;
+                traitDisplay.style.display = 'block';
+            }
+            
+            // Отображаем текущую работу
+            if (gameData.current_job && jobs[gameData.current_job]) {
+                const currentJob = jobs[gameData.current_job];
+                document.getElementById('currentJobEmoji').textContent = currentJob.emoji;
+                document.getElementById('currentJobName').textContent = currentJob.name;
+            }
+            
+            updateBackground();
+        }
+        
+        function updateBackground() {
+            const workSection = document.getElementById('workSection');
+            const characterEmoji = document.getElementById('characterEmoji');
+            
+            // Определяем сцену и эмодзи
+            if (gameData.energy < 30) {
+                // Вечер - устал
+                workSection.style.background = 'linear-gradient(135deg, #4a4a4a, #333333)';
+                characterEmoji.textContent = '🍺';
+            } else if (gameData.day <= 10) {
+                // Утро дома
+                workSection.style.background = 'linear-gradient(135deg, #f5e6d8, #e8d5b7)';
+                characterEmoji.textContent = '☕';
+            } else if (gameData.day <= 20) {
+                // На работе
+                workSection.style.background = 'linear-gradient(135deg, #f5f5f5, #e0e0e0)';
+                characterEmoji.textContent = '💻';
+            } else {
+                // Поздний вечер
+                workSection.style.background = 'linear-gradient(135deg, #4a4a4a, #333333)';
+                characterEmoji.textContent = '😴';
+            }
+        }
+        
+        function showEvent(event) {
+            document.getElementById('popupEmoji').textContent = event.emoji;
+            document.getElementById('popupText').textContent = event.text;
+            
+            const costElement = document.getElementById('popupCost');
+            const cost = event.cost;
+            costElement.textContent = cost > 0 ? `+${cost}₽` : `${cost}₽`;
+            costElement.className = cost > 0 ? 'popup-cost positive' : 'popup-cost';
+            
+            document.getElementById('eventPopup').style.display = 'block';
+            
+            setTimeout(() => {
+                document.getElementById('eventPopup').style.display = 'none';
+            }, 3000);
+        }
+        
+        // Обработчики событий
+        document.getElementById('workBtn').addEventListener('click', work);
+        document.getElementById('nextDayBtn').addEventListener('click', nextDay);
+        document.getElementById('jobsBtn').addEventListener('click', showJobsModal);
+        document.getElementById('shopBtn').addEventListener('click', async () => {
+            console.log('Клик по кнопке магазина');
+            if (!boosters || Object.keys(boosters).length === 0) {
+                console.log('Бустеры не загружены, загружаем...');
+                await loadBoosters();
+            }
+            showShopModal();
+        });
+        document.getElementById('carsBtn').addEventListener('click', async () => {
+            if (!cars || Object.keys(cars).length === 0) {
+                await loadCars();
+            }
+            showCarsModal();
+        });
+        document.getElementById('realEstateBtn').addEventListener('click', async () => {
+            if (!realEstate || Object.keys(realEstate).length === 0) {
+                await loadRealEstate();
+            }
+            showRealEstateModal();
+        });
+        
+        // Закрытие модальных окон
+        document.getElementById('closeJobsModal').addEventListener('click', () => {
+            document.getElementById('jobsModal').style.display = 'none';
+        });
+        
+        document.getElementById('closeShopModal').addEventListener('click', () => {
+            document.getElementById('shopModal').style.display = 'none';
+        });
+        
+        document.getElementById('closeCarsModal').addEventListener('click', () => {
+            document.getElementById('carsModal').style.display = 'none';
+        });
+        
+        document.getElementById('closeRealEstateModal').addEventListener('click', () => {
+            document.getElementById('realEstateModal').style.display = 'none';
+        });
+        
+        document.getElementById('closeCreditModal').addEventListener('click', () => {
+            document.getElementById('creditModal').style.display = 'none';
+        });
+        
+        // Закрытие модальных окон по клику на фон
+        document.getElementById('jobsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'jobsModal') {
+                document.getElementById('jobsModal').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('shopModal').addEventListener('click', (e) => {
+            if (e.target.id === 'shopModal') {
+                document.getElementById('shopModal').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('carsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'carsModal') {
+                document.getElementById('carsModal').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('realEstateModal').addEventListener('click', (e) => {
+            if (e.target.id === 'realEstateModal') {
+                document.getElementById('realEstateModal').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('creditModal').addEventListener('click', (e) => {
+            if (e.target.id === 'creditModal') {
+                document.getElementById('creditModal').style.display = 'none';
+            }
+        });
+        
+        // Обработчики кредитной формы
+        document.getElementById('cashBtn').addEventListener('click', () => {
+            document.getElementById('cashBtn').classList.add('active');
+            document.getElementById('creditBtn').classList.remove('active');
+            document.getElementById('creditDetails').style.display = 'none';
+            updateCreditCalculation();
+        });
+        
+        document.getElementById('creditBtn').addEventListener('click', () => {
+            document.getElementById('creditBtn').classList.add('active');
+            document.getElementById('cashBtn').classList.remove('active');
+            document.getElementById('creditDetails').style.display = 'block';
+            updateCreditCalculation();
+        });
+        
+        document.getElementById('downPayment').addEventListener('input', updateCreditCalculation);
+        document.getElementById('termMonths').addEventListener('input', updateCreditCalculation);
+        document.getElementById('confirmPurchase').addEventListener('click', confirmPurchase);
+        
+        document.getElementById('eventPopup').addEventListener('click', () => {
+            document.getElementById('eventPopup').style.display = 'none';
+        });
+        
+        // Загружаем данные при старте
+        loadUser();
+    </script>
+</body>
+</html>

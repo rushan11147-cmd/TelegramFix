@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+        }
+        .info {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .error {
+            background: rgba(255,0,0,0.2);
+            border: 1px solid red;
+        }
+        .success {
+            background: rgba(0,255,0,0.2);
+            border: 1px solid green;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Диагностика Telegram Mini App</h1>
+    
+    <div class="info">
+        <h3>Информация о браузере:</h3>
+        <p id="userAgent"></p>
+        <p id="screenSize"></p>
+        <p id="windowSize"></p>
+    </div>
+    
+    <div class="info">
+        <h3>Telegram WebApp:</h3>
+        <p id="telegramStatus"></p>
+        <p id="telegramUser"></p>
+        <p id="telegramTheme"></p>
+    </div>
+    
+    <div class="info">
+        <h3>Подключение к серверу:</h3>
+        <p id="serverStatus">Проверяем...</p>
+        <p id="apiStatus">Проверяем API...</p>
+    </div>
+    
+    <button onclick="testGame()" style="padding: 10px 20px; font-size: 16px; margin: 10px 0;">
+        🎮 Перейти к игре
+    </button>
+    
+    <script>
+        // Информация о браузере
+        document.getElementById('userAgent').textContent = 'User Agent: ' + navigator.userAgent;
+        document.getElementById('screenSize').textContent = 'Размер экрана: ' + screen.width + 'x' + screen.height;
+        document.getElementById('windowSize').textContent = 'Размер окна: ' + window.innerWidth + 'x' + window.innerHeight;
+        
+        // Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            
+            document.getElementById('telegramStatus').textContent = '✅ Telegram WebApp доступен';
+            document.getElementById('telegramStatus').className = 'info success';
+            
+            const user = tg.initDataUnsafe?.user;
+            if (user) {
+                document.getElementById('telegramUser').textContent = `👤 Пользователь: ${user.first_name} (ID: ${user.id})`;
+            } else {
+                document.getElementById('telegramUser').textContent = '❌ Данные пользователя недоступны';
+            }
+            
+            document.getElementById('telegramTheme').textContent = `🎨 Тема: ${tg.colorScheme || 'неизвестно'}`;
+        } else {
+            document.getElementById('telegramStatus').textContent = '❌ Telegram WebApp недоступен';
+            document.getElementById('telegramStatus').className = 'info error';
+        }
+        
+        // Проверка сервера
+        async function checkServer() {
+            try {
+                const response = await fetch('/api/user/test');
+                if (response.ok) {
+                    document.getElementById('serverStatus').textContent = '✅ Сервер доступен';
+                    document.getElementById('serverStatus').className = 'info success';
+                } else {
+                    document.getElementById('serverStatus').textContent = `❌ Ошибка сервера: ${response.status}`;
+                    document.getElementById('serverStatus').className = 'info error';
+                }
+            } catch (error) {
+                document.getElementById('serverStatus').textContent = `❌ Ошибка подключения: ${error.message}`;
+                document.getElementById('serverStatus').className = 'info error';
+            }
+            
+            try {
+                const response = await fetch('/api/traits');
+                if (response.ok) {
+                    document.getElementById('apiStatus').textContent = '✅ API работает';
+                    document.getElementById('apiStatus').className = 'info success';
+                } else {
+                    document.getElementById('apiStatus').textContent = `❌ Ошибка API: ${response.status}`;
+                    document.getElementById('apiStatus').className = 'info error';
+                }
+            } catch (error) {
+                document.getElementById('apiStatus').textContent = `❌ Ошибка API: ${error.message}`;
+                document.getElementById('apiStatus').className = 'info error';
+            }
+        }
+        
+        function testGame() {
+            window.location.href = '/';
+        }
+        
+        // Запускаем проверки
+        checkServer();
+    </script>
+</body>
+</html>

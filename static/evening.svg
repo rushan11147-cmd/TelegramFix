@@ -1,0 +1,33 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="400" height="400" fill="#4A4A4A"/>
+<!-- Living room background -->
+<rect x="0" y="300" width="400" height="100" fill="#333333"/>
+<!-- Sofa -->
+<ellipse cx="200" cy="320" rx="100" ry="30" fill="#B73659"/>
+<rect x="100" y="280" width="200" height="40" fill="#B73659"/>
+<!-- Lamp -->
+<rect x="50" y="150" width="10" height="100" fill="#6B7380"/>
+<ellipse cx="55" cy="140" rx="25" ry="35" fill="#F5E6D8"/>
+<!-- Character -->
+<circle cx="200" cy="200" r="40" fill="#FDBCB4"/>
+<!-- Hair -->
+<path d="M170 180C170 50 230 150 230 180C230 120 170 120 170 180" fill="#333333"/>
+<!-- Eyes -->
+<circle cx="185" cy="195" r="5" fill="#333333"/>
+<circle cx="215" cy="195" r="5" fill="#333333"/>
+<!-- Mouth -->
+<ellipse cx="200" cy="215" rx="8" ry="4" fill="#D9734C"/>
+<!-- Body -->
+<rect x="170" y="240" width="60" height="80" fill="#F5F5F5"/>
+<!-- Arms -->
+<rect x="140" y="250" width="30" height="50" fill="#FDBCB4"/>
+<rect x="230" y="250" width="30" height="50" fill="#FDBCB4"/>
+<!-- Legs -->
+<rect x="175" y="320" width="20" height="50" fill="#4C964A"/>
+<rect x="205" y="320" width="20" height="50" fill="#4C964A"/>
+<!-- Beer -->
+<ellipse cx="240" cy="280" rx="10" ry="25" fill="#F5E6D8"/>
+<ellipse cx="240" cy="275" rx="8" ry="20" fill="#F39C12"/>
+<!-- Hand waving -->
+<circle cx="145" cy="245" r="8" fill="#FDBCB4"/>
+</svg>

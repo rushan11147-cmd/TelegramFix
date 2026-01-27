@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Выживи до зарплаты</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+        
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+        
+        .game-area {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .character {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        
+        .work-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .work-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .work-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .energy-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2ed573, #7bed9f);
+            transition: width 0.3s;
+        }
+        
+        .next-day-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            background: linear-gradient(135deg, #3742fa, #2f3542);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        
+        .message {
+            background: rgba(255, 107, 53, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+        }
+        
+        .trait-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #ff6b35;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .trait-card:active {
+            transform: scale(0.95);
+            background: rgba(255, 107, 53, 0.2);
+        }
+        
+        .trait-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .trait-emoji {
+            font-size: 30px;
+            margin-right: 10px;
+        }
+        
+        .trait-name {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .trait-desc {
+            font-size: 14px;
+            color: #bdc3c7;
+        }
+        
+        .menu-btn {
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .menu-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: #2c3e50;
+            border-radius: 15px;
+            max-width: 350px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 15px 15px 0 0;
+            color: white;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        
+        .item-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #34495e;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .item-card:active {
+            transform: scale(0.95);
+            background: rgba(255, 107, 53, 0.2);
+            border-color: #ff6b35;
+        }
+        
+        .item-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .item-card.owned {
+            background: rgba(46, 213, 115, 0.2);
+            border-color: #2ed573;
+        }
+        
+        .item-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .item-emoji {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        
+        .item-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            flex: 1;
+        }
+        
+        .item-price {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ff6b35;
+        }
+        
+        .item-desc {
+            font-size: 12px;
+            color: #bdc3c7;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading" id="loading">
+            🎮 Загрузка игры...
+        </div>
+        
+        <div id="gameContent" style="display: none;">
+            <!-- Экран выбора черты -->
+            <div id="traitSelection" style="display: none;">
+                <div class="header">
+                    <div class="title">Выбери черту личности</div>
+                    <div style="font-size: 14px;">Влияет на всю игру!</div>
+                </div>
+                
+                <div id="traitsList"></div>
+            </div>
+            
+            <!-- Основная игра -->
+            <div id="mainGame">
+                <div class="header">
+                    <div class="title">Выживи до зарплаты</div>
+                    <div class="stats">
+                        <div>День: <span id="day">1</span>/30</div>
+                        <div>💰 <span id="money">500</span>₽</div>
+                        <div id="traitDisplay" style="display: none;">
+                            <span id="traitEmoji"></span> <span id="traitName"></span>
+                        </div>
+                    </div>
+                </div>
+            
+            <div class="game-area">
+                <div class="character" id="character">☕</div>
+                
+                <!-- Текущая работа -->
+                <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="font-size: 14px; color: #bdc3c7;">Текущая работа:</div>
+                    <div style="font-size: 16px; font-weight: bold;">
+                        <span id="currentJobEmoji">🛵</span> <span id="currentJobName">Доставка еды</span>
+                    </div>
+                </div>
+                
+                <button class="work-btn" id="workBtn">РАБОТАТЬ! 💼</button>
+                <div>Энергия: <span id="energy">100</span>/100</div>
+                <div class="energy-bar">
+                    <div class="energy-fill" id="energyFill" style="width: 100%"></div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <button class="menu-btn" id="jobsBtn">Работы 💼</button>
+                <button class="menu-btn" id="shopBtn">Магазин 🛒</button>
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <button class="menu-btn" id="carsBtn">Машины 🚗</button>
+                <button class="menu-btn" id="realEstateBtn">Недвижимость 🏠</button>
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <button class="menu-btn" id="goalsBtn">Цели 🎯</button>
+                <button class="menu-btn" id="statsBtn">Статистика 📊</button>
+            </div>
+            
+            <button class="next-day-btn" id="nextDayBtn">Следующий день 🌅</button>
+            
+            <div class="message" id="message"></div>
+            </div>
+        </div>
+        
+        <!-- Модальные окна -->
+        <div class="modal" id="jobsModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div style="font-size: 18px; font-weight: bold;">Выбери работу</div>
+                    <button class="close-btn" id="closeJobsModal">&times;</button>
+                </div>
+                <div id="jobsList"></div>
+            </div>
+        </div>
+        
+        <div class="modal" id="shopModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div style="font-size: 18px; font-weight: bold;">Магазин</div>
+                    <button class="close-btn" id="closeShopModal">&times;</button>
+                </div>
+                <div id="shopList"></div>
+            </div>
+        </div>
+        
+        <div class="modal" id="carsModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div style="font-size: 18px; font-weight: bold;">Автосалон</div>
+                    <button class="close-btn" id="closeCarsModal">&times;</button>
+                </div>
+                <div id="carsList"></div>
+            </div>
+        </div>
+        
+        <div class="modal" id="realEstateModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div style="font-size: 18px; font-weight: bold;">Недвижимость</div>
+                    <button class="close-btn" id="closeRealEstateModal">&times;</button>
+                </div>
+                <div id="realEstateList"></div>
+            </div>
+        </div>
+        
+        <div class="modal" id="buyModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div style="font-size: 18px; font-weight: bold;" id="buyModalTitle">Покупка</div>
+                    <button class="close-btn" id="closeBuyModal">&times;</button>
+                </div>
+                <div style="padding: 20px;">
+                    <div id="buyItemInfo"></div>
+                    <div style="margin: 20px 0;">
+                        <button class="work-btn" id="buyCashBtn" style="margin-bottom: 10px;">Купить за наличные 💰</button>
+                        <button class="work-btn" id="buyCreditBtn" style="background: linear-gradient(135deg, #3742fa, #2f3542);">Купить в кредит 🏦</button>
+                    </div>
+                    <div id="creditInfo" style="display: none; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; margin-bottom: 5px;">Первоначальный взнос:</label>
+                            <input type="number" id="downPayment" style="width: 100%; padding: 8px; border-radius: 5px; border: none; background: rgba(255,255,255,0.2); color: white;">
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; margin-bottom: 5px;">Срок (месяцев):</label>
+                            <input type="number" id="termMonths" value="24" min="12" max="60" style="width: 100%; padding: 8px; border-radius: 5px; border: none; background: rgba(255,255,255,0.2); color: white;">
+                        </div>
+                        <div id="creditCalculation" style="font-size: 14px; color: #f39c12;"></div>
+                        <button class="work-btn" id="confirmCreditBtn" style="margin-top: 15px;">Оформить кредит</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal" id="goalsModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div style="font-size: 18px; font-weight: bold;">Глобальные цели</div>
+                    <button class="close-btn" id="closeGoalsModal">&times;</button>
+                </div>
+                <div id="goalsList"></div>
+            </div>
+        </div>
+        
+        <div class="modal" id="statsModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div style="font-size: 18px; font-weight: bold;">Статистика</div>
+                    <button class="close-btn" id="closeStatsModal">&times;</button>
+                </div>
+                <div id="statsContent" style="padding: 20px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userId = 'demo_user';
+        let gameData = {};
+        let traits = {};
+        
+        // Черты личности
+        const TRAITS = {
+            "терпила": {
+                "name": "Терпила",
+                "description": "Все штрафы −20%, но доход от работы −15%",
+                "emoji": "😤"
+            },
+            "рисковый": {
+                "name": "Рисковый", 
+                "description": "Шанс событий +30%, но негативные события чаще",
+                "emoji": "🎲"
+            },
+            "экономный": {
+                "name": "Экономный",
+                "description": "Все покупки дешевле на 10%, но постоянно грустный",
+                "emoji": "💰"
+            },
+            "прокрастинатор": {
+                "name": "Прокрастинатор", 
+                "description": "Иногда день проходит без действий, но усталость не растёт",
+                "emoji": "😴"
+            }
+        };
+        
+        // Работы
+        const JOBS = {
+            "delivery": {
+                "name": "Доставка еды",
+                "emoji": "🛵",
+                "income": 80,
+                "energy": 15,
+                "unlock_day": 1,
+                "description": "Быстрые деньги, но устаёшь"
+            },
+            "office": {
+                "name": "Офисная работа", 
+                "emoji": "💻",
+                "income": 120,
+                "energy": 10,
+                "unlock_day": 5,
+                "description": "Стабильный доход"
+            },
+            "freelance": {
+                "name": "Фриланс",
+                "emoji": "🎨", 
+                "income": 200,
+                "energy": 20,
+                "unlock_day": 10,
+                "description": "Высокий доход, но нестабильно"
+            },
+            "crypto": {
+                "name": "Крипто-трейдинг",
+                "emoji": "📈",
+                "income": 300,
+                "energy": 25,
+                "unlock_day": 15,
+                "description": "Рискованно, но прибыльно"
+            }
+        };
+        
+        // Товары в магазине
+        const SHOP_ITEMS = {
+            "coffee": {
+                "name": "Кофе",
+                "emoji": "☕",
+                "price": 150,
+                "description": "+30 энергии на день"
+            },
+            "energy_drink": {
+                "name": "Энергетик",
+                "emoji": "🥤",
+                "price": 300,
+                "description": "+50 энергии на день"
+            },
+            "laptop": {
+                "name": "Новый ноутбук",
+                "emoji": "💻",
+                "price": 2000,
+                "description": "Доход от офисной работы +50%"
+            },
+            "scooter": {
+                "name": "Электросамокат",
+                "emoji": "🛴",
+                "price": 1500,
+                "description": "Доставка тратит меньше энергии"
+            }
+        };
+        
+        // Машины
+        const CARS = {
+            "old_car": {
+                "name": "Старая машина",
+                "emoji": "🚗",
+                "price": 150000,
+                "monthly_cost": 8000,
+                "income_bonus": 0.1,
+                "description": "Дешевая, но надежная. +10% к доходу от доставки"
+            },
+            "new_car": {
+                "name": "Новая машина",
+                "emoji": "🚙",
+                "price": 800000,
+                "monthly_cost": 15000,
+                "income_bonus": 0.2,
+                "description": "Комфорт и статус. +20% к доходу от доставки"
+            },
+            "luxury_car": {
+                "name": "Премиум авто",
+                "emoji": "🏎️",
+                "price": 2500000,
+                "monthly_cost": 35000,
+                "income_bonus": 0.3,
+                "description": "Для успешных людей. +30% к доходу от доставки"
+            }
+        };
+        
+        // Недвижимость
+        const REAL_ESTATE = {
+            "studio": {
+                "name": "Студия",
+                "emoji": "🏠",
+                "price": 3000000,
+                "monthly_income": 0,
+                "monthly_cost": -5000,
+                "description": "Своя крыша над головой. Экономия 5000₽/мес"
+            },
+            "apartment": {
+                "name": "Квартира",
+                "emoji": "🏡",
+                "price": 8000000,
+                "monthly_income": 25000,
+                "monthly_cost": -8000,
+                "description": "Можно сдавать в аренду. +25000₽/мес"
+            },
+            "shop": {
+                "name": "Магазин",
+                "emoji": "🏪",
+                "price": 5000000,
+                "monthly_income": 80000,
+                "monthly_cost": 20000,
+                "description": "Стабильный бизнес. +60000₽/мес чистыми"
+            },
+            "office": {
+                "name": "Офис",
+                "emoji": "🏢",
+                "price": 12000000,
+                "monthly_income": 150000,
+                "monthly_cost": 40000,
+                "description": "Сдача офисных помещений. +110000₽/мес чистыми"
+            }
+        };
+        
+        let currentBuyItem = null;
+        let currentBuyType = null;
+        let goals = {};
+        
+        // Инициализация Telegram WebApp
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                
+                const user = tg.initDataUnsafe?.user;
+                if (user && user.id) {
+                    userId = user.id.toString();
+                }
+            }
+        } catch (error) {
+            console.log('Telegram WebApp error:', error);
+        }
+        
+        // Показать сообщение
+        function showMessage(text, duration = 3000) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.style.display = 'block';
+            
+            setTimeout(() => {
+                messageEl.style.display = 'none';
+            }, duration);
+        }
+        
+        // Обновить интерфейс
+        function updateUI() {
+            document.getElementById('day').textContent = gameData.day || 1;
+            document.getElementById('money').textContent = gameData.money || 500;
+            document.getElementById('energy').textContent = gameData.energy || 100;
+            
+            const energyPercent = ((gameData.energy || 100) / (gameData.max_energy || 100)) * 100;
+            document.getElementById('energyFill').style.width = energyPercent + '%';
+            
+            const workBtn = document.getElementById('workBtn');
+            workBtn.disabled = (gameData.energy || 100) <= 0;
+            
+            // Показать черту
+            if (gameData.trait && TRAITS[gameData.trait]) {
+                const traitDisplay = document.getElementById('traitDisplay');
+                const traitEmoji = document.getElementById('traitEmoji');
+                const traitName = document.getElementById('traitName');
+                
+                traitEmoji.textContent = TRAITS[gameData.trait].emoji;
+                traitName.textContent = TRAITS[gameData.trait].name;
+                traitDisplay.style.display = 'block';
+            }
+            
+            // Отображение текущей работы
+            if (gameData.current_job && JOBS[gameData.current_job]) {
+                const currentJob = JOBS[gameData.current_job];
+                document.getElementById('currentJobEmoji').textContent = currentJob.emoji;
+                document.getElementById('currentJobName').textContent = currentJob.name;
+            }
+            
+            // Обновить персонажа
+            const character = document.getElementById('character');
+            if (gameData.energy < 30) {
+                character.textContent = '😴';
+            } else if (gameData.day <= 10) {
+                character.textContent = '☕';
+            } else if (gameData.day <= 20) {
+                character.textContent = '💻';
+            } else {
+                character.textContent = '🍺';
+            }
+        }
+        
+        // Показать работы
+        function showJobs() {
+            const jobsList = document.getElementById('jobsList');
+            jobsList.innerHTML = '';
+            
+            Object.keys(JOBS).forEach(jobId => {
+                const job = JOBS[jobId];
+                const isUnlocked = gameData.day >= job.unlock_day;
+                const isCurrent = gameData.current_job === jobId;
+                
+                const jobCard = document.createElement('div');
+                jobCard.className = `item-card ${!isUnlocked ? 'locked' : ''} ${isCurrent ? 'owned' : ''}`;
+                
+                if (isUnlocked && !isCurrent) {
+                    jobCard.onclick = () => changeJob(jobId);
+                }
+                
+                jobCard.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-emoji">${job.emoji}</div>
+                        <div class="item-name">${job.name}</div>
+                        <div class="item-price">+${job.income}₽</div>
+                    </div>
+                    <div class="item-desc">${job.description}</div>
+                    <div class="item-desc">Энергия: -${job.energy} | ${isUnlocked ? (isCurrent ? 'Текущая работа' : 'Доступно') : `Откроется на ${job.unlock_day} день`}</div>
+                `;
+                
+                jobsList.appendChild(jobCard);
+            });
+            
+            document.getElementById('jobsModal').style.display = 'flex';
+        }
+        
+        // Показать магазин
+        function showShop() {
+            const shopList = document.getElementById('shopList');
+            shopList.innerHTML = '';
+            
+            Object.keys(SHOP_ITEMS).forEach(itemId => {
+                const item = SHOP_ITEMS[itemId];
+                const canAfford = gameData.money >= item.price;
+                const isOwned = gameData.owned_items && gameData.owned_items.includes(itemId);
+                
+                // Применяем скидку для черты "Экономный"
+                let price = item.price;
+                if (gameData.trait === 'экономный') {
+                    price = Math.floor(price * 0.9);
+                }
+                
+                const itemCard = document.createElement('div');
+                itemCard.className = `item-card ${!canAfford ? 'locked' : ''} ${isOwned ? 'owned' : ''}`;
+                
+                if (canAfford && !isOwned) {
+                    itemCard.onclick = () => buyItem(itemId);
+                }
+                
+                itemCard.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-emoji">${item.emoji}</div>
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-price">${price}₽</div>
+                    </div>
+                    <div class="item-desc">${item.description}</div>
+                    <div class="item-desc">${isOwned ? 'Куплено' : (canAfford ? 'Доступно' : 'Недостаточно денег')}</div>
+                `;
+                
+                shopList.appendChild(itemCard);
+            });
+            
+            document.getElementById('shopModal').style.display = 'flex';
+        }
+        
+        // Сменить работу
+        async function changeJob(jobId) {
+            try {
+                const response = await fetch('/api/change_job', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: userId,
+                        job_id: jobId
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    gameData = result.user;
+                } else {
+                    // Оффлайн режим
+                    gameData.current_job = jobId;
+                }
+                
+                updateUI();
+                document.getElementById('jobsModal').style.display = 'none';
+                showMessage(`Работа изменена: ${JOBS[jobId].name}`);
+                
+            } catch (error) {
+                console.error('Change job error:', error);
+                gameData.current_job = jobId;
+                updateUI();
+                document.getElementById('jobsModal').style.display = 'none';
+                showMessage(`Работа изменена: ${JOBS[jobId].name} (оффлайн)`);
+            }
+        }
+        
+        // Купить товар
+        async function buyItem(itemId) {
+            const item = SHOP_ITEMS[itemId];
+            let price = item.price;
+            
+            // Применяем скидку для черты "Экономный"
+            if (gameData.trait === 'экономный') {
+                price = Math.floor(price * 0.9);
+            }
+            
+            if (gameData.money < price) {
+                showMessage('Недостаточно денег!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/buy_booster', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: userId,
+                        booster_id: itemId
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    gameData = result.user;
+                } else {
+                    // Оффлайн режим
+                    gameData.money -= price;
+                    if (!gameData.owned_items) gameData.owned_items = [];
+                    gameData.owned_items.push(itemId);
+                    
+                    // Применяем эффект
+                    if (itemId === 'coffee') {
+                        gameData.energy = Math.min(gameData.max_energy, gameData.energy + 30);
+                    } else if (itemId === 'energy_drink') {
+                        gameData.energy = Math.min(gameData.max_energy, gameData.energy + 50);
+                    }
+                }
+                
+                updateUI();
+                showShop(); // Обновляем магазин
+                showMessage(`Куплено: ${item.name} за ${price}₽`);
+                
+            } catch (error) {
+                console.error('Buy item error:', error);
+                // Оффлайн режим
+                gameData.money -= price;
+                if (!gameData.owned_items) gameData.owned_items = [];
+                gameData.owned_items.push(itemId);
+                
+                if (itemId === 'coffee') {
+                    gameData.energy = Math.min(gameData.max_energy, gameData.energy + 30);
+                } else if (itemId === 'energy_drink') {
+                    gameData.energy = Math.min(gameData.max_energy, gameData.energy + 50);
+                }
+                
+                updateUI();
+                showShop();
+                showMessage(`Куплено: ${item.name} за ${price}₽ (оффлайн)`);
+            }
+        }
+        
+        // Показать машины
+        function showCars() {
+            const carsList = document.getElementById('carsList');
+            carsList.innerHTML = '';
+            
+            Object.keys(CARS).forEach(carId => {
+                const car = CARS[carId];
+                const isOwned = gameData.cars && gameData.cars.includes(carId);
+                
+                const carCard = document.createElement('div');
+                carCard.className = `item-card ${isOwned ? 'owned' : ''}`;
+                
+                if (!isOwned) {
+                    carCard.onclick = () => showBuyModal(carId, 'car');
+                }
+                
+                carCard.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-emoji">${car.emoji}</div>
+                        <div class="item-name">${car.name}</div>
+                        <div class="item-price">${car.price.toLocaleString()}₽</div>
+                    </div>
+                    <div class="item-desc">${car.description}</div>
+                    <div class="item-desc">${isOwned ? 'В собственности' : `Расходы: ${car.monthly_cost}₽/мес`}</div>
+                `;
+                
+                carsList.appendChild(carCard);
+            });
+            
+            document.getElementById('carsModal').style.display = 'flex';
+        }
+        
+        // Показать недвижимость
+        function showRealEstate() {
+            const realEstateList = document.getElementById('realEstateList');
+            realEstateList.innerHTML = '';
+            
+            Object.keys(REAL_ESTATE).forEach(propertyId => {
+                const property = REAL_ESTATE[propertyId];
+                const isOwned = gameData.real_estate && gameData.real_estate.includes(propertyId);
+                const monthlyNet = property.monthly_income - Math.abs(property.monthly_cost);
+                
+                const propertyCard = document.createElement('div');
+                propertyCard.className = `item-card ${isOwned ? 'owned' : ''}`;
+                
+                if (!isOwned) {
+                    propertyCard.onclick = () => showBuyModal(propertyId, 'real_estate');
+                }
+                
+                propertyCard.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-emoji">${property.emoji}</div>
+                        <div class="item-name">${property.name}</div>
+                        <div class="item-price">${property.price.toLocaleString()}₽</div>
+                    </div>
+                    <div class="item-desc">${property.description}</div>
+                    <div class="item-desc">${isOwned ? 'В собственности' : `Доход: ${monthlyNet > 0 ? '+' : ''}${monthlyNet}₽/мес`}</div>
+                `;
+                
+                realEstateList.appendChild(propertyCard);
+            });
+            
+            document.getElementById('realEstateModal').style.display = 'flex';
+        }
+        
+        // Показать модальное окно покупки
+        function showBuyModal(itemId, itemType) {
+            currentBuyItem = itemId;
+            currentBuyType = itemType;
+            
+            const item = itemType === 'car' ? CARS[itemId] : REAL_ESTATE[itemId];
+            
+            document.getElementById('buyModalTitle').textContent = 
+                itemType === 'car' ? 'Покупка автомобиля' : 'Покупка недвижимости';
+            
+            document.getElementById('buyItemInfo').innerHTML = `
+                <div class="item-header">
+                    <div class="item-emoji">${item.emoji}</div>
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-price">${item.price.toLocaleString()}₽</div>
+                </div>
+                <div class="item-desc">${item.description}</div>
+            `;
+            
+            // Настройка кредита
+            const minDown = Math.floor(item.price * 0.3); // 30% минимум
+            document.getElementById('downPayment').value = minDown;
+            document.getElementById('downPayment').min = minDown;
+            
+            updateCreditCalculation();
+            
+            document.getElementById('creditInfo').style.display = 'none';
+            document.getElementById('buyModal').style.display = 'flex';
+        }
+        
+        // Обновить расчет кредита
+        function updateCreditCalculation() {
+            if (!currentBuyItem || !currentBuyType) return;
+            
+            const item = currentBuyType === 'car' ? CARS[currentBuyItem] : REAL_ESTATE[currentBuyItem];
+            const downPayment = parseInt(document.getElementById('downPayment').value) || 0;
+            const termMonths = parseInt(document.getElementById('termMonths').value) || 24;
+            
+            const loanAmount = item.price - downPayment;
+            const rate = currentBuyType === 'car' ? 0.12 : 0.08; // 12% для авто, 8% для недвижимости
+            const monthlyRate = rate / 12;
+            
+            if (loanAmount <= 0) {
+                document.getElementById('creditCalculation').innerHTML = 'Сумма кредита: 0₽';
+                return;
+            }
+            
+            const monthlyPayment = Math.floor(loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1));
+            const totalPayment = monthlyPayment * termMonths;
+            const overpayment = totalPayment - loanAmount;
+            
+            document.getElementById('creditCalculation').innerHTML = `
+                <div>Сумма кредита: ${loanAmount.toLocaleString()}₽</div>
+                <div>Ежемесячный платеж: ${monthlyPayment.toLocaleString()}₽</div>
+                <div>Переплата: ${overpayment.toLocaleString()}₽</div>
+                <div>Ставка: ${Math.round(rate * 100)}% годовых</div>
+            `;
+        }
+        
+        // Купить за наличные
+        async function buyCash() {
+            if (!currentBuyItem || !currentBuyType) return;
+            
+            const item = currentBuyType === 'car' ? CARS[currentBuyItem] : REAL_ESTATE[currentBuyItem];
+            let price = item.price;
+            
+            // Применяем скидку для черты "Экономный"
+            if (gameData.trait === 'экономный') {
+                price = Math.floor(price * 0.9);
+            }
+            
+            if (gameData.money < price) {
+                showMessage('Недостаточно денег!');
+                return;
+            }
+            
+            try {
+                const endpoint = currentBuyType === 'car' ? '/api/buy_car' : '/api/buy_real_estate';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: userId,
+                        [currentBuyType === 'car' ? 'car_id' : 'property_id']: currentBuyItem,
+                        payment_type: 'cash'
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    gameData = result.user;
+                    
+                    // Проверяем новые цели
+                    checkNewGoals(result);
+                } else {
+                    // Оффлайн режим
+                    gameData.money -= price;
+                    if (currentBuyType === 'car') {
+                        if (!gameData.cars) gameData.cars = [];
+                        gameData.cars.push(currentBuyItem);
+                    } else {
+                        if (!gameData.real_estate) gameData.real_estate = [];
+                        gameData.real_estate.push(currentBuyItem);
+                    }
+                }
+                
+                updateUI();
+                document.getElementById('buyModal').style.display = 'none';
+                document.getElementById('carsModal').style.display = 'none';
+                document.getElementById('realEstateModal').style.display = 'none';
+                
+                showMessage(`Куплено: ${item.name} за ${price.toLocaleString()}₽`);
+                
+            } catch (error) {
+                console.error('Buy error:', error);
+                // Оффлайн режим
+                gameData.money -= price;
+                if (currentBuyType === 'car') {
+                    if (!gameData.cars) gameData.cars = [];
+                    gameData.cars.push(currentBuyItem);
+                } else {
+                    if (!gameData.real_estate) gameData.real_estate = [];
+                    gameData.real_estate.push(currentBuyItem);
+                }
+                
+                updateUI();
+                document.getElementById('buyModal').style.display = 'none';
+                document.getElementById('carsModal').style.display = 'none';
+                document.getElementById('realEstateModal').style.display = 'none';
+                
+                showMessage(`Куплено: ${item.name} за ${price.toLocaleString()}₽ (оффлайн)`);
+            }
+        }
+        
+        // Купить в кредит
+        async function buyCredit() {
+            if (!currentBuyItem || !currentBuyType) return;
+            
+            const item = currentBuyType === 'car' ? CARS[currentBuyItem] : REAL_ESTATE[currentBuyItem];
+            const downPayment = parseInt(document.getElementById('downPayment').value) || 0;
+            const termMonths = parseInt(document.getElementById('termMonths').value) || 24;
+            
+            if (gameData.money < downPayment) {
+                showMessage('Недостаточно денег для первоначального взноса!');
+                return;
+            }
+            
+            try {
+                const endpoint = currentBuyType === 'car' ? '/api/buy_car' : '/api/buy_real_estate';
+                const paymentType = currentBuyType === 'car' ? 'credit' : 'mortgage';
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: userId,
+                        [currentBuyType === 'car' ? 'car_id' : 'property_id']: currentBuyItem,
+                        payment_type: paymentType,
+                        down_payment: downPayment,
+                        term_months: termMonths
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    gameData = result.user;
+                    
+                    // Проверяем новые цели
+                    checkNewGoals(result);
+                    
+                    showMessage(`Куплено в кредит: ${item.name}\nВзнос: ${downPayment.toLocaleString()}₽\nПлатеж: ${result.monthly_payment?.toLocaleString()}₽/мес`);
+                } else {
+                    // Оффлайн режим - упрощенная версия
+                    gameData.money -= downPayment;
+                    if (currentBuyType === 'car') {
+                        if (!gameData.cars) gameData.cars = [];
+                        gameData.cars.push(currentBuyItem);
+                    } else {
+                        if (!gameData.real_estate) gameData.real_estate = [];
+                        gameData.real_estate.push(currentBuyItem);
+                    }
+                    showMessage(`Куплено в кредит: ${item.name} (оффлайн)`);
+                }
+                
+                updateUI();
+                document.getElementById('buyModal').style.display = 'none';
+                document.getElementById('carsModal').style.display = 'none';
+                document.getElementById('realEstateModal').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Buy credit error:', error);
+                // Оффлайн режим
+                gameData.money -= downPayment;
+                if (currentBuyType === 'car') {
+                    if (!gameData.cars) gameData.cars = [];
+                    gameData.cars.push(currentBuyItem);
+                } else {
+                    if (!gameData.real_estate) gameData.real_estate = [];
+                    gameData.real_estate.push(currentBuyItem);
+                }
+                
+                updateUI();
+                document.getElementById('buyModal').style.display = 'none';
+                document.getElementById('carsModal').style.display = 'none';
+                document.getElementById('realEstateModal').style.display = 'none';
+                
+                showMessage(`Куплено в кредит: ${item.name} (оффлайн)`);
+            }
+        }
+        
+        // Показать цели
+        async function showGoals() {
+            // Загружаем цели если не загружены
+            if (!goals || Object.keys(goals).length === 0) {
+                try {
+                    const response = await fetch('/api/goals');
+                    if (response.ok) {
+                        goals = await response.json();
+                    }
+                } catch (error) {
+                    console.error('Load goals error:', error);
+                }
+            }
+            
+            const goalsList = document.getElementById('goalsList');
+            goalsList.innerHTML = '';
+            
+            Object.keys(goals).forEach(goalId => {
+                const goal = goals[goalId];
+                const isCompleted = gameData.completed_goals && gameData.completed_goals.includes(goalId);
+                
+                const goalCard = document.createElement('div');
+                goalCard.className = `item-card ${isCompleted ? 'owned' : ''}`;
+                
+                goalCard.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-emoji">${goal.emoji}</div>
+                        <div class="item-name">${goal.name}</div>
+                        <div class="item-price">${isCompleted ? '✅' : '⏳'}</div>
+                    </div>
+                    <div class="item-desc">${goal.description}</div>
+                    <div class="item-desc">${isCompleted ? 'Выполнено!' : goal.reward_description}</div>
+                `;
+                
+                goalsList.appendChild(goalCard);
+            });
+            
+            document.getElementById('goalsModal').style.display = 'flex';
+        }
+        
+        // Показать статистику
+        function showStats() {
+            const completedGoals = gameData.completed_goals ? gameData.completed_goals.length : 0;
+            const totalGoals = Object.keys(goals).length;
+            
+            // Рассчитываем пассивный доход
+            let passiveIncome = 0;
+            if (gameData.real_estate) {
+                gameData.real_estate.forEach(propertyId => {
+                    if (REAL_ESTATE[propertyId]) {
+                        passiveIncome += REAL_ESTATE[propertyId].monthly_income;
+                    }
+                });
+            }
+            
+            // Рассчитываем ежемесячные расходы
+            let monthlyExpenses = 0;
+            if (gameData.cars) {
+                gameData.cars.forEach(carId => {
+                    if (CARS[carId]) {
+                        monthlyExpenses += CARS[carId].monthly_cost;
+                    }
+                });
+            }
+            if (gameData.real_estate) {
+                gameData.real_estate.forEach(propertyId => {
+                    if (REAL_ESTATE[propertyId]) {
+                        monthlyExpenses += Math.abs(REAL_ESTATE[propertyId].monthly_cost);
+                    }
+                });
+            }
+            
+            const netIncome = passiveIncome - monthlyExpenses;
+            
+            document.getElementById('statsContent').innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: #ff6b35; margin-bottom: 10px;">💰 Финансы</h3>
+                    <div>Текущие деньги: ${gameData.money?.toLocaleString() || 0}₽</div>
+                    <div>Пассивный доход: +${passiveIncome.toLocaleString()}₽/мес</div>
+                    <div>Ежемесячные расходы: -${monthlyExpenses.toLocaleString()}₽/мес</div>
+                    <div style="color: ${netIncome >= 0 ? '#2ed573' : '#ff4757'};">Чистый доход: ${netIncome >= 0 ? '+' : ''}${netIncome.toLocaleString()}₽/мес</div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: #ff6b35; margin-bottom: 10px;">🏆 Достижения</h3>
+                    <div>Выполнено целей: ${completedGoals}/${totalGoals}</div>
+                    <div>Прогресс: ${Math.round((completedGoals / totalGoals) * 100)}%</div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: #ff6b35; margin-bottom: 10px;">🚗 Имущество</h3>
+                    <div>Машин: ${gameData.cars?.length || 0}</div>
+                    <div>Недвижимости: ${gameData.real_estate?.length || 0}</div>
+                    <div>Активных кредитов: ${gameData.credits?.length || 0}</div>
+                </div>
+                
+                <div>
+                    <h3 style="color: #ff6b35; margin-bottom: 10px;">📅 Игровой прогресс</h3>
+                    <div>Текущий день: ${gameData.day || 1}/30</div>
+                    <div>Черта личности: ${gameData.trait ? TRAITS[gameData.trait]?.name : 'Не выбрана'}</div>
+                    <div>Текущая работа: ${gameData.current_job ? JOBS[gameData.current_job]?.name : 'Доставка еды'}</div>
+                </div>
+            `;
+            
+            document.getElementById('statsModal').style.display = 'flex';
+        }
+        
+        // Показать уведомление о выполненной цели
+        function showGoalCompleted(goal) {
+            showMessage(`🎉 Цель выполнена: ${goal.name}!\n${goal.reward_description}`, 5000);
+        }
+        
+        // Проверить новые цели
+        function checkNewGoals(result) {
+            if (result.newly_completed_goals && result.newly_completed_goals.length > 0) {
+                result.newly_completed_goals.forEach(goal => {
+                    setTimeout(() => {
+                        showGoalCompleted(goal);
+                    }, 1000);
+                });
+            }
+        }
+        
+        // Показать черты для выбора
+        function showTraits() {
+            const traitsList = document.getElementById('traitsList');
+            traitsList.innerHTML = '';
+            
+            Object.keys(TRAITS).forEach(traitId => {
+                const trait = TRAITS[traitId];
+                const traitCard = document.createElement('div');
+                traitCard.className = 'trait-card';
+                traitCard.onclick = () => selectTrait(traitId);
+                
+                traitCard.innerHTML = `
+                    <div class="trait-header">
+                        <div class="trait-emoji">${trait.emoji}</div>
+                        <div class="trait-name">${trait.name}</div>
+                    </div>
+                    <div class="trait-desc">${trait.description}</div>
+                `;
+                
+                traitsList.appendChild(traitCard);
+            });
+        }
+        
+        // Выбрать черту
+        async function selectTrait(traitId) {
+            try {
+                const response = await fetch('/api/select_trait', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: userId,
+                        trait_id: traitId
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    gameData = result.user;
+                } else {
+                    // Оффлайн режим
+                    gameData.trait = traitId;
+                    gameData.trait_selected = true;
+                }
+                
+                // Показать основную игру
+                document.getElementById('traitSelection').style.display = 'none';
+                document.getElementById('mainGame').style.display = 'block';
+                updateUI();
+                
+                showMessage(`Выбрана черта: ${TRAITS[traitId].name}`);
+                
+            } catch (error) {
+                console.error('Select trait error:', error);
+                // Оффлайн режим
+                gameData.trait = traitId;
+                gameData.trait_selected = true;
+                
+                document.getElementById('traitSelection').style.display = 'none';
+                document.getElementById('mainGame').style.display = 'block';
+                updateUI();
+                
+                showMessage(`Выбрана черта: ${TRAITS[traitId].name} (оффлайн)`);
+            }
+        }
+        
+        // Загрузить пользователя
+        async function loadUser() {
+            try {
+                const response = await fetch(`/api/user/${userId}`);
+                if (response.ok) {
+                    gameData = await response.json();
+                } else {
+                    // Создать пользователя по умолчанию
+                    gameData = {
+                        money: 500,
+                        day: 1,
+                        max_days: 30,
+                        energy: 100,
+                        max_energy: 100,
+                        trait_selected: false,
+                        current_job: 'delivery',
+                        unlocked_jobs: ['delivery'],
+                        owned_items: [],
+                        cars: [],
+                        real_estate: [],
+                        credits: [],
+                        completed_goals: [],
+                        total_goals_completed: 0
+                    };
+                }
+                
+                // Показать игру
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('gameContent').style.display = 'block';
+                
+                // Проверить, выбрана ли черта
+                if (!gameData.trait_selected) {
+                    document.getElementById('traitSelection').style.display = 'block';
+                    document.getElementById('mainGame').style.display = 'none';
+                    showTraits();
+                } else {
+                    document.getElementById('traitSelection').style.display = 'none';
+                    document.getElementById('mainGame').style.display = 'block';
+                    updateUI();
+                }
+                
+            } catch (error) {
+                console.error('Load user error:', error);
+                showMessage('Ошибка загрузки. Играем в оффлайн режиме.');
+                
+                gameData = {
+                    money: 500,
+                    day: 1,
+                    max_days: 30,
+                    energy: 100,
+                    max_energy: 100,
+                    trait_selected: false,
+                    current_job: 'delivery',
+                    unlocked_jobs: ['delivery'],
+                    owned_items: [],
+                    cars: [],
+                    real_estate: [],
+                    credits: [],
+                    completed_goals: [],
+                    total_goals_completed: 0
+                };
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('gameContent').style.display = 'block';
+                document.getElementById('traitSelection').style.display = 'block';
+                document.getElementById('mainGame').style.display = 'none';
+                showTraits();
+            }
+        }
+        
+        // Работать
+        async function work() {
+            if (gameData.energy <= 0) {
+                showMessage('Нет энергии! Переходи к следующему дню.');
+                return;
+            }
+            
+            // Определяем текущую работу
+            const currentJob = JOBS[gameData.current_job || 'delivery'];
+            if (gameData.energy < currentJob.energy) {
+                showMessage('Недостаточно энергии для этой работы!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/work', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    gameData = result.user;
+                    
+                    showMessage(`Заработал ${result.income || currentJob.income}₽!`);
+                    
+                    // Проверяем новые цели
+                    checkNewGoals(result);
+                    
+                    if (result.event) {
+                        setTimeout(() => {
+                            showMessage(`${result.event.emoji} ${result.event.text}: ${result.event.cost > 0 ? '+' : ''}${result.event.cost}₽`);
+                        }, 1500);
+                    }
+                } else {
+                    // Оффлайн режим
+                    let income = currentJob.income;
+                    
+                    // Применяем эффекты черт
+                    if (gameData.trait === 'терпила') {
+                        income = Math.floor(income * 0.85); // -15% дохода
+                    }
+                    
+                    // Применяем бонусы от предметов
+                    if (gameData.owned_items && gameData.owned_items.includes('laptop') && gameData.current_job === 'office') {
+                        income = Math.floor(income * 1.5);
+                    }
+                    
+                    // Применяем бонусы от машин для доставки
+                    if (gameData.current_job === 'delivery' && gameData.cars) {
+                        let carBonus = 0;
+                        gameData.cars.forEach(carId => {
+                            if (CARS[carId]) {
+                                carBonus += CARS[carId].income_bonus;
+                            }
+                        });
+                        income = Math.floor(income * (1 + carBonus));
+                    }
+                    
+                    gameData.money += income;
+                    gameData.energy -= currentJob.energy;
+                    showMessage(`Заработал ${income}₽!`);
+                }
+                
+                updateUI();
+                
+            } catch (error) {
+                console.error('Work error:', error);
+                // Оффлайн режим
+                let income = currentJob.income;
+                
+                if (gameData.trait === 'терпила') {
+                    income = Math.floor(income * 0.85);
+                }
+                
+                if (gameData.owned_items && gameData.owned_items.includes('laptop') && gameData.current_job === 'office') {
+                    income = Math.floor(income * 1.5);
+                }
+                
+                // Применяем бонусы от машин для доставки
+                if (gameData.current_job === 'delivery' && gameData.cars) {
+                    let carBonus = 0;
+                    gameData.cars.forEach(carId => {
+                        if (CARS[carId]) {
+                            carBonus += CARS[carId].income_bonus;
+                        }
+                    });
+                    income = Math.floor(income * (1 + carBonus));
+                }
+                
+                gameData.money += income;
+                gameData.energy -= currentJob.energy;
+                showMessage(`Заработал ${income}₽! (оффлайн)`);
+                updateUI();
+            }
+        }
+        
+        // Следующий день
+        async function nextDay() {
+            try {
+                const response = await fetch('/api/next_day', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    gameData = result.user;
+                    
+                    // Проверяем новые цели
+                    checkNewGoals(result);
+                    
+                    if (result.salary_received) {
+                        showMessage(result.message, 5000);
+                    } else {
+                        showMessage(result.message);
+                    }
+                } else {
+                    // Оффлайн режим
+                    gameData.day++;
+                    gameData.energy = gameData.max_energy;
+                    const cost = Math.floor(Math.random() * 300) + 200;
+                    gameData.money -= cost;
+                    if (gameData.money < 0) gameData.money = 0;
+                    
+                    showMessage(`Потрачено на жизнь: ${cost}₽`);
+                }
+                
+                updateUI();
+                
+            } catch (error) {
+                console.error('Next day error:', error);
+                // Оффлайн режим
+                gameData.day++;
+                gameData.energy = gameData.max_energy;
+                const cost = Math.floor(Math.random() * 300) + 200;
+                gameData.money -= cost;
+                if (gameData.money < 0) gameData.money = 0;
+                
+                showMessage(`Потрачено на жизнь: ${cost}₽ (оффлайн)`);
+                updateUI();
+            }
+        }
+        
+        // Обработчики событий
+        document.getElementById('workBtn').addEventListener('click', work);
+        document.getElementById('nextDayBtn').addEventListener('click', nextDay);
+        document.getElementById('jobsBtn').addEventListener('click', showJobs);
+        document.getElementById('shopBtn').addEventListener('click', showShop);
+        document.getElementById('carsBtn').addEventListener('click', showCars);
+        document.getElementById('realEstateBtn').addEventListener('click', showRealEstate);
+        document.getElementById('goalsBtn').addEventListener('click', showGoals);
+        document.getElementById('statsBtn').addEventListener('click', showStats);
+        
+        // Закрытие модальных окон
+        document.getElementById('closeJobsModal').addEventListener('click', () => {
+            document.getElementById('jobsModal').style.display = 'none';
+        });
+        
+        document.getElementById('closeShopModal').addEventListener('click', () => {
+            document.getElementById('shopModal').style.display = 'none';
+        });
+        
+        document.getElementById('closeCarsModal').addEventListener('click', () => {
+            document.getElementById('carsModal').style.display = 'none';
+        });
+        
+        document.getElementById('closeRealEstateModal').addEventListener('click', () => {
+            document.getElementById('realEstateModal').style.display = 'none';
+        });
+        
+        document.getElementById('closeBuyModal').addEventListener('click', () => {
+            document.getElementById('buyModal').style.display = 'none';
+        });
+        
+        document.getElementById('closeGoalsModal').addEventListener('click', () => {
+            document.getElementById('goalsModal').style.display = 'none';
+        });
+        
+        document.getElementById('closeStatsModal').addEventListener('click', () => {
+            document.getElementById('statsModal').style.display = 'none';
+        });
+        
+        // Обработчики покупки
+        document.getElementById('buyCashBtn').addEventListener('click', buyCash);
+        
+        document.getElementById('buyCreditBtn').addEventListener('click', () => {
+            document.getElementById('creditInfo').style.display = 'block';
+        });
+        
+        document.getElementById('confirmCreditBtn').addEventListener('click', buyCredit);
+        
+        document.getElementById('downPayment').addEventListener('input', updateCreditCalculation);
+        document.getElementById('termMonths').addEventListener('input', updateCreditCalculation);
+        
+        // Закрытие по клику на фон
+        document.getElementById('jobsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'jobsModal') {
+                document.getElementById('jobsModal').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('shopModal').addEventListener('click', (e) => {
+            if (e.target.id === 'shopModal') {
+                document.getElementById('shopModal').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('carsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'carsModal') {
+                document.getElementById('carsModal').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('realEstateModal').addEventListener('click', (e) => {
+            if (e.target.id === 'realEstateModal') {
+                document.getElementById('realEstateModal').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('buyModal').addEventListener('click', (e) => {
+            if (e.target.id === 'buyModal') {
+                document.getElementById('buyModal').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('goalsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'goalsModal') {
+                document.getElementById('goalsModal').style.display = 'none';
+            }
+        });
+        
+        document.getElementById('statsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'statsModal') {
+                document.getElementById('statsModal').style.display = 'none';
+            }
+        });
+        
+        // Запуск игры
+        loadUser();
+    </script>
+</body>
+</html>
