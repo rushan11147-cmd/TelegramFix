@@ -16,14 +16,32 @@ users_data = {}
 
 # События игры
 EVENTS = [
-    {"text": "Уронил доставку", "cost": -250, "emoji": "🍕"},
-    {"text": "Купил дошик", "cost": -150, "emoji": "🍜"},
-    {"text": "Переплатил ЖКХ", "cost": -1200, "emoji": "📄"},
-    {"text": "Нашел монетку", "cost": 50, "emoji": "🪙"},
-    {"text": "Продал старые вещи", "cost": 300, "emoji": "📦"},
-    {"text": "Штраф за парковку", "cost": -500, "emoji": "🚗"},
-    {"text": "Кэшбэк с карты", "cost": 100, "emoji": "💳"},
-    {"text": "Сломался телефон", "cost": -800, "emoji": "📱"},
+    # Негативные события
+    {"text": "Уронил доставку", "cost": -250, "emoji": "🍕", "mood": -5},
+    {"text": "Купил дошик", "cost": -150, "emoji": "🍜", "mood": 0},
+    {"text": "Переплатил ЖКХ", "cost": -1200, "emoji": "📄", "mood": -10},
+    {"text": "Штраф за парковку", "cost": -500, "emoji": "🚗", "mood": -8},
+    {"text": "Сломался телефон", "cost": -800, "emoji": "📱", "mood": -15},
+    {"text": "Штраф за опоздание", "cost": -200, "emoji": "💸", "mood": -5},
+    {"text": "Конфликт с начальником", "cost": 0, "emoji": "😤", "mood": -10},
+    {"text": "Не выполнил план", "cost": -150, "emoji": "🚫", "mood": -5},
+    {"text": "Сломалось оборудование", "cost": -300, "emoji": "💔", "mood": -8},
+    {"text": "Пролил кофе на документы", "cost": -100, "emoji": "☕", "mood": -3},
+    
+    # Позитивные события
+    {"text": "Нашел монетку", "cost": 50, "emoji": "🪙", "mood": 2},
+    {"text": "Продал старые вещи", "cost": 300, "emoji": "📦", "mood": 5},
+    {"text": "Кэшбэк с карты", "cost": 100, "emoji": "💳", "mood": 3},
+    {"text": "Премия от босса", "cost": 500, "emoji": "💰", "mood": 15},
+    {"text": "Бонус за хорошую работу", "cost": 300, "emoji": "🎁", "mood": 10},
+    {"text": "Клиент дал чаевые", "cost": 200, "emoji": "⭐", "mood": 8},
+    {"text": "Выиграл в лотерею", "cost": 1000, "emoji": "🎉", "mood": 20},
+    {"text": "Помог коллеге, он угостил", "cost": 100, "emoji": "🤝", "mood": 5},
+    {"text": "Нашел купон на скидку", "cost": 150, "emoji": "🎫", "mood": 5},
+    
+    # Нейтральные события
+    {"text": "Поболтал с коллегами", "cost": 0, "emoji": "💬", "mood": 2},
+    {"text": "Обычный рабочий день", "cost": 0, "emoji": "📧", "mood": 0},
 ]
 
 # Черты личности
@@ -391,7 +409,20 @@ def get_user(user_id):
             'monthly_income': 0,  # Пассивный доход
             'monthly_expenses': 0,  # Ежемесячные расходы
             'completed_goals': [],  # Выполненные цели
-            'total_goals_completed': 0  # Счетчик выполненных целей
+            'total_goals_completed': 0,  # Счетчик выполненных целей
+            'worked_today': False,  # Работал ли сегодня
+            'mood': 50,  # Настроение (0-100)
+            'total_earned': 0,  # Всего заработано
+            'total_spent': 0,  # Всего потрачено
+            'work_count': 0,  # Сколько раз работал
+            'health': 100,  # Здоровье (0-100)
+            'skills': {  # Навыки
+                'speed': 1,  # Скорость (меньше энергии на работу)
+                'luck': 1,  # Удача (больше шанс позитивных событий)
+                'charisma': 1,  # Харизма (больше доход)
+                'intelligence': 1  # Интеллект (быстрее прокачка)
+            },
+            'skill_points': 0  # Очки навыков
         }
     return jsonify(users_data[user_id])
 
@@ -866,6 +897,193 @@ def select_trait():
         'trait': TRAITS[trait_id]
     })
 
+@app.route('/api/buy_food', methods=['POST'])
+def buy_food():
+    """Купить еду - восстанавливает настроение"""
+    data = request.json
+    user_id = data.get('user_id')
+    
+    if user_id not in users_data:
+        return jsonify({"error": "User not found"}), 404
+    
+    user = users_data[user_id]
+    cost = 200
+    
+    if user['money'] < cost:
+        return jsonify({"error": "Недостаточно денег!"}), 400
+    
+    user['money'] -= cost
+    user['mood'] = min(100, user.get('mood', 50) + 10)
+    
+    return jsonify({
+        'user': user,
+        'message': 'Вкусно поел! +10 настроения'
+    })
+
+@app.route('/api/take_rest', methods=['POST'])
+def take_rest():
+    """Отдохнуть - восстанавливает энергию и настроение"""
+    data = request.json
+    user_id = data.get('user_id')
+    
+    if user_id not in users_data:
+        return jsonify({"error": "User not found"}), 404
+    
+    user = users_data[user_id]
+    
+    # Проверяем сколько раз уже отдыхал сегодня
+    rest_count = user.get('rest_count_today', 0)
+    if rest_count >= 2:
+        return jsonify({"error": "Уже отдыхал 2 раза сегодня! Хватит лениться!"}), 400
+    
+    user['energy'] = min(user['max_energy'], user['energy'] + 20)
+    user['mood'] = min(100, user.get('mood', 50) + 5)
+    user['rest_count_today'] = rest_count + 1
+    
+    return jsonify({
+        'user': user,
+        'message': f'Отдохнул! +20 энергии, +5 настроения ({2 - user["rest_count_today"]} раз осталось)'
+    })
+
+@app.route('/api/random_event', methods=['POST'])
+def random_event():
+    """Случайное событие в течение дня"""
+    data = request.json
+    user_id = data.get('user_id')
+    
+    if user_id not in users_data:
+        return jsonify({"error": "User not found"}), 404
+    
+    user = users_data[user_id]
+    
+    # Выбираем случайное событие
+    event = random.choice(EVENTS)
+    event_cost = event['cost']
+    mood_change = event.get('mood', 0)
+    
+    # Применяем эффекты черт
+    if user.get('trait') == 'терпила' and event_cost < 0:
+        event_cost = int(event_cost * 0.8)
+    if user.get('trait') == 'экономный' and event_cost < 0:
+        event_cost = int(event_cost * 0.9)
+    if user.get('trait') == 'рисковый' and event_cost < 0:
+        event_cost = int(event_cost * 1.5)
+    
+    user['money'] += event_cost
+    user['mood'] = max(0, min(100, user.get('mood', 50) + mood_change))
+    
+    if user['money'] < 0:
+        user['money'] = 0
+    
+    message = event['emoji'] + ' ' + event['text']
+    if event_cost != 0:
+        message += ' ' + ('+' if event_cost > 0 else '') + str(event_cost) + '₽'
+    if mood_change != 0:
+        message += ' ' + ('+' if mood_change > 0 else '') + str(mood_change) + ' настроения'
+    
+    return jsonify({
+        'user': user,
+        'event': event,
+        'message': message
+    })
+
+@app.route('/api/play_roulette', methods=['POST'])
+def play_roulette():
+    """Сыграть в рулетку"""
+    data = request.json
+    user_id = data.get('user_id')
+    bet = data.get('bet', 100)
+    
+    if user_id not in users_data:
+        return jsonify({"error": "User not found"}), 404
+    
+    user = users_data[user_id]
+    
+    if user['money'] < bet:
+        return jsonify({"error": "Недостаточно денег!"}), 400
+    
+    # Вычитаем ставку
+    user['money'] -= bet
+    
+    # Крутим рулетку
+    rand = random.random()
+    if rand < 0.4:  # 40% шанс - проигрыш
+        multiplier = 0
+        result_emoji = '😭'
+        message = f'Проиграл! -{bet}₽'
+    elif rand < 0.7:  # 30% шанс - x2
+        multiplier = 2
+        result_emoji = '🙂'
+        win = bet * multiplier
+        user['money'] += win
+        message = f'Выиграл x2! +{win}₽'
+    elif rand < 0.9:  # 20% шанс - x5
+        multiplier = 5
+        result_emoji = '😄'
+        win = bet * multiplier
+        user['money'] += win
+        message = f'Выиграл x5! +{win}₽'
+    else:  # 10% шанс - x10
+        multiplier = 10
+        result_emoji = '🤑'
+        win = bet * multiplier
+        user['money'] += win
+        message = f'ДЖЕКПОТ x10! +{win}₽'
+    
+    # Настроение меняется
+    if multiplier == 0:
+        user['mood'] = max(0, user.get('mood', 50) - 10)
+    elif multiplier >= 5:
+        user['mood'] = min(100, user.get('mood', 50) + 15)
+    
+    return jsonify({
+        'user': user,
+        'multiplier': multiplier,
+        'result_emoji': result_emoji,
+        'message': message
+    })
+
+@app.route('/api/upgrade_skill', methods=['POST'])
+def upgrade_skill():
+    """Прокачать навык"""
+    data = request.json
+    user_id = data.get('user_id')
+    skill = data.get('skill')
+    
+    if user_id not in users_data:
+        return jsonify({"error": "User not found"}), 404
+    
+    user = users_data[user_id]
+    
+    if 'skills' not in user:
+        user['skills'] = {'speed': 1, 'luck': 1, 'charisma': 1, 'intelligence': 1}
+    
+    if skill not in user['skills']:
+        return jsonify({"error": "Invalid skill"}), 400
+    
+    skill_points = user.get('skill_points', 0)
+    if skill_points < 1:
+        return jsonify({"error": "Недостаточно очков навыков!"}), 400
+    
+    current_level = user['skills'][skill]
+    if current_level >= 10:
+        return jsonify({"error": "Максимальный уровень!"}), 400
+    
+    user['skills'][skill] += 1
+    user['skill_points'] -= 1
+    
+    skill_names = {
+        'speed': '🏃 Скорость',
+        'luck': '🍀 Удача',
+        'charisma': '💬 Харизма',
+        'intelligence': '🧠 Интеллект'
+    }
+    
+    return jsonify({
+        'user': user,
+        'message': f'{skill_names[skill]} повышена до уровня {user["skills"][skill]}!'
+    })
+
 @app.route('/api/work', methods=['POST'])
 def work():
     """Обработка нажатия кнопки РАБОТАТЬ"""
@@ -913,6 +1131,22 @@ def work():
         trait_data = TRAITS['терпила']
         income = int(income * (1 - trait_data['income_reduction']))
     
+    # Применяем модификатор настроения
+    mood = user.get('mood', 50)
+    mood_modifier = 1.0
+    if mood <= 20:
+        mood_modifier = 0.7  # -30% при депрессии
+    elif mood <= 40:
+        mood_modifier = 0.85  # -15% когда грустно
+    elif mood <= 60:
+        mood_modifier = 1.0  # 0% нормально
+    elif mood <= 80:
+        mood_modifier = 1.1  # +10% когда хорошо
+    else:
+        mood_modifier = 1.25  # +25% когда отлично
+    
+    income = int(income * mood_modifier)
+    
     # Проверяем достаточно ли энергии
     if user['energy'] < energy_cost:
         return jsonify({"error": "Недостаточно энергии!"}), 400
@@ -920,6 +1154,25 @@ def work():
     # Работаем
     user['money'] += income
     user['energy'] -= energy_cost
+    user['worked_today'] = True  # Отмечаем что работал сегодня
+    user['total_earned'] = user.get('total_earned', 0) + income
+    user['work_count'] = user.get('work_count', 0) + 1
+    
+    # Даем очки навыков (1 очко за 5 работ)
+    if user['work_count'] % 5 == 0:
+        intelligence_bonus = 1 + (user.get('skills', {}).get('intelligence', 1) - 1) * 0.1
+        skill_points_earned = int(1 * intelligence_bonus)
+        user['skill_points'] = user.get('skill_points', 0) + skill_points_earned
+        # Сообщим игроку
+        newly_earned_skill_point = True
+    else:
+        newly_earned_skill_point = False
+    
+    # Настроение немного падает от работы
+    user['mood'] = max(0, user.get('mood', 50) - 2)
+    
+    # Здоровье падает от работы
+    user['health'] = max(0, user.get('health', 100) - 1)
     
     # Определяем шанс события
     event_chance = 0.2  # Базовый шанс 20%
@@ -957,6 +1210,11 @@ def work():
         
         user['money'] += event_cost
         event['cost'] = event_cost  # Обновляем стоимость для отображения
+        
+        # Применяем изменение настроения от события
+        mood_change = event.get('mood', 0)
+        user['mood'] = max(0, min(100, user.get('mood', 50) + mood_change))
+        
         user['last_event'] = event
         user['last_event_time'] = current_time
         
@@ -972,7 +1230,8 @@ def work():
         'event': event,
         'income': income,
         'job': job,
-        'newly_completed_goals': newly_completed_goals
+        'newly_completed_goals': newly_completed_goals,
+        'skill_point_earned': newly_earned_skill_point
     })
 
 @app.route('/api/next_day', methods=['POST'])
@@ -985,6 +1244,10 @@ def next_day():
         return jsonify({"error": "User not found"}), 404
     
     user = users_data[user_id]
+    
+    # Сбрасываем флаг работы (если был)
+    user['worked_today'] = False
+    user['rest_count_today'] = 0  # Сбрасываем счетчик отдыха
     
     # Проверяем черту "Прокрастинатор" - иногда день проходит без действий
     day_skipped = False
