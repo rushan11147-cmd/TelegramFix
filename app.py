@@ -6,7 +6,9 @@ import json
 import random
 import time
 import sqlite3
-from threading import Lock
+from threading import Lock, Thread
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 load_dotenv()
 
@@ -1508,5 +1510,54 @@ def next_day():
             'expired_boosters': expired_boosters
         })
 
+# ============================================
+# TELEGRAM BOT (запускается в отдельном потоке)
+# ============================================
+
+BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+WEBAPP_URL = os.getenv('WEBAPP_URL', 'http://localhost:5000')
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /start"""
+    keyboard = [
+        [InlineKeyboardButton(
+            "🎮 Играть в 'Выживи до зарплаты'", 
+            web_app=WebAppInfo(url=WEBAPP_URL)
+        )]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        "🎯 Добро пожаловать в игру 'Выживи до зарплаты'!\n\n"
+        "💼 Твоя задача - дожить до зарплаты, работая и избегая лишних трат.\n"
+        "⚡ Работай, чтобы заработать деньги, но следи за энергией!\n"
+        "📅 Каждый день приносит новые вызовы и случайные события.\n\n"
+        "Нажми кнопку ниже, чтобы начать игру:",
+        reply_markup=reply_markup
+    )
+
+def run_bot():
+    """Запуск бота в отдельном потоке"""
+    if not BOT_TOKEN or BOT_TOKEN == 'your_bot_token_here':
+        print("⚠️ TELEGRAM_BOT_TOKEN не установлен - бот не запущен")
+        return
+    
+    try:
+        application = Application.builder().token(BOT_TOKEN).build()
+        application.add_handler(CommandHandler("start", start))
+        
+        print("🤖 Telegram бот запущен!")
+        print(f"🌐 Web App URL: {WEBAPP_URL}")
+        
+        application.run_polling()
+    except Exception as e:
+        print(f"❌ Ошибка запуска бота: {e}")
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Запускаем бота в отдельном потоке
+    bot_thread = Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    
+    # Запускаем Flask приложение
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
