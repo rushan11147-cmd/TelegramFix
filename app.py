@@ -64,7 +64,7 @@ JOBS = {
         "name": "Доставка еды",
         "emoji": "🛵",
         "base_income": 80,
-        "energy_cost": 15,
+        "energy_cost": 5,  # Было 15, стало 5
         "unlock_day": 1,
         "description": "Быстрые деньги, но устаёшь"
     },
@@ -72,7 +72,7 @@ JOBS = {
         "name": "Офисная работа", 
         "emoji": "💻",
         "base_income": 120,
-        "energy_cost": 10,
+        "energy_cost": 3,  # Было 10, стало 3
         "unlock_day": 5,
         "description": "Стабильный доход"
     },
@@ -80,7 +80,7 @@ JOBS = {
         "name": "Фриланс",
         "emoji": "🎨", 
         "base_income": 200,
-        "energy_cost": 20,
+        "energy_cost": 7,  # Было 20, стало 7
         "unlock_day": 10,
         "description": "Высокий доход, но нестабильно"
     },
@@ -88,7 +88,7 @@ JOBS = {
         "name": "Крипто-трейдинг",
         "emoji": "📈",
         "base_income": 300,
-        "energy_cost": 25,
+        "energy_cost": 10,  # Было 25, стало 10
         "unlock_day": 15,
         "description": "Рискованно, но прибыльно"
     }
@@ -391,6 +391,13 @@ def get_user(user_id):
         }
     return jsonify(users_data[user_id])
 
+@app.route('/api/reset/<user_id>', methods=['POST'])
+def reset_user(user_id):
+    """Сбросить данные пользователя (начать заново)"""
+    if user_id in users_data:
+        del users_data[user_id]
+    return jsonify({"message": "User data reset successfully"})
+
 @app.route('/api/jobs')
 def get_jobs():
     """Получить список доступных работ"""
@@ -563,7 +570,11 @@ def check_goal_completion(user, goal_id):
         return passive_income >= 200000
     
     elif check_function == 'is_debt_free':
-        return len(user.get('credits', [])) == 0 and user.get('money', 0) > 0
+        # Цель выполняется только если были кредиты раньше
+        # Проверяем: нет кредитов сейчас И были кредиты раньше
+        has_no_credits = len(user.get('credits', [])) == 0
+        had_credits_before = user.get('had_credits', False)  # Флаг что были кредиты
+        return has_no_credits and had_credits_before and user.get('money', 0) > 0
     
     elif check_function == 'has_all_cars':
         user_cars = set(user.get('cars', []))
@@ -586,13 +597,16 @@ def check_and_complete_goals(user):
     """Проверить и выполнить все возможные цели"""
     newly_completed = []
     
+    # Инициализируем список выполненных целей если его нет
+    if 'completed_goals' not in user:
+        user['completed_goals'] = []
+    
     for goal_id in GLOBAL_GOALS.keys():
-        if check_goal_completion(user, goal_id):
+        # ВАЖНО: Проверяем, что цель еще НЕ выполнена
+        if goal_id not in user['completed_goals'] and check_goal_completion(user, goal_id):
             goal = GLOBAL_GOALS[goal_id]
             
             # Добавляем в выполненные
-            if 'completed_goals' not in user:
-                user['completed_goals'] = []
             user['completed_goals'].append(goal_id)
             
             # Даем награду
@@ -702,6 +716,9 @@ def buy_car():
             user['credits'] = []
         user['credits'].append(credit)
         
+        # Устанавливаем флаг что были кредиты (для цели "Без долгов")
+        user['had_credits'] = True
+        
         return jsonify({
             'user': user,
             'car': car,
@@ -802,6 +819,9 @@ def buy_real_estate():
         if 'credits' not in user:
             user['credits'] = []
         user['credits'].append(credit)
+        
+        # Устанавливаем флаг что были кредиты (для цели "Без долгов")
+        user['had_credits'] = True
         
         return jsonify({
             'user': user,
