@@ -361,6 +361,10 @@ def simple():
 def full():
     return render_template('index.html')
 
+@app.route('/design')
+def design():
+    return render_template('game_design.html')
+
 @app.route('/api/user/<user_id>')
 def get_user(user_id):
     """Получить данные пользователя"""
