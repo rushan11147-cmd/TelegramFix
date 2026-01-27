@@ -281,7 +281,135 @@
         }
         
         @media (max-width: 768px) {
-            .main-area { grid-template-columns: 1fr; }
+            body {
+                padding: 5px;
+            }
+            
+            .container {
+                padding: 8px;
+                border: 4px solid #2c3e50;
+                border-radius: 15px;
+            }
+            
+            .top-bar {
+                padding: 8px 12px;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+            
+            .main-area { 
+                grid-template-columns: 1fr;
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+            
+            .character-card {
+                padding: 10px;
+            }
+            
+            .character-image {
+                height: 180px;
+                font-size: 60px;
+            }
+            
+            .character-level-badge {
+                padding: 5px 10px;
+                font-size: 11px;
+            }
+            
+            .right-panel {
+                gap: 8px;
+            }
+            
+            .money-progress {
+                padding: 8px 10px;
+                font-size: 13px;
+            }
+            
+            .progress-bar {
+                height: 16px;
+            }
+            
+            .nav-buttons {
+                gap: 6px;
+            }
+            
+            .nav-btn {
+                padding: 10px 6px;
+                font-size: 11px;
+                border: 2px solid;
+            }
+            
+            .nav-btn-icon {
+                font-size: 20px;
+                margin-bottom: 3px;
+            }
+            
+            .job-info {
+                padding: 10px;
+                font-size: 13px;
+            }
+            
+            .work-button, .next-day-btn {
+                padding: 12px;
+                font-size: 15px;
+                border: 2px solid;
+            }
+            
+            .modal {
+                padding: 10px;
+            }
+            
+            .modal-content {
+                max-height: 85vh;
+            }
+            
+            .modal-header {
+                padding: 12px 15px;
+                font-size: 16px;
+            }
+            
+            .modal-body {
+                padding: 12px;
+            }
+            
+            .item-card {
+                padding: 10px;
+                margin: 6px 0;
+                border: 2px solid #8b7355;
+            }
+            
+            .item-icon {
+                font-size: 24px;
+            }
+            
+            .item-name {
+                font-size: 14px;
+            }
+            
+            .item-price {
+                font-size: 14px;
+            }
+            
+            .item-desc {
+                font-size: 11px;
+            }
+            
+            .close-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 20px;
+            }
+            
+            .shop-tabs {
+                padding: 10px;
+                gap: 4px;
+            }
+            
+            .shop-tab {
+                padding: 8px 6px;
+                font-size: 11px;
+            }
         }
     </style>
 </head>
@@ -428,7 +556,7 @@
         </div>
     </div>
     
-    <div class="modal" id="traitModal" style="display: flex;">
+    <div class="modal" id="traitModal">
         <div class="modal-content">
             <div class="modal-header">
                 <div style="font-size: 20px; font-weight: bold;">Выбери свою черту характера</div>

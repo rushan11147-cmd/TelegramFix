@@ -5,14 +5,64 @@ from dotenv import load_dotenv
 import json
 import random
 import time
+import sqlite3
+from threading import Lock
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# Простое хранилище данных пользователей (в продакшене используй базу данных)
+# База данных SQLite
+DB_PATH = 'game_data.db'
+db_lock = Lock()
+
+def init_db():
+    """Инициализация базы данных"""
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id TEXT PRIMARY KEY,
+                data TEXT NOT NULL,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+
+def save_user_data(user_id, data):
+    """Сохранение данных пользователя в БД"""
+    with db_lock:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO users (user_id, data, last_updated)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+            ''', (user_id, json.dumps(data)))
+            conn.commit()
+
+def load_user_data(user_id):
+    """Загрузка данных пользователя из БД"""
+    with db_lock:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT data FROM users WHERE user_id = ?', (user_id,))
+            row = cursor.fetchone()
+            if row:
+                return json.loads(row[0])
+            return None
+
+# Инициализируем БД при старте
+init_db()
+
+# Простое хранилище данных пользователей (кэш в памяти)
 users_data = {}
+
+def save_and_return(user_id, response_data):
+    """Сохранить данные пользователя в БД и вернуть ответ"""
+    if user_id in users_data:
+        save_user_data(user_id, users_data[user_id])
+    return jsonify(response_data)
 
 # События игры
 EVENTS = [
@@ -386,44 +436,56 @@ def design():
 @app.route('/api/user/<user_id>')
 def get_user(user_id):
     """Получить данные пользователя"""
+    # Сначала проверяем кэш в памяти
     if user_id not in users_data:
-        users_data[user_id] = {
-            'money': 500,  # Стартовые деньги
-            'day': 1,      # Текущий день
-            'max_days': 30, # До зарплаты
-            'energy': 100,
-            'max_energy': 100,
-            'money_per_work': 50,  # За одно нажатие "работать"
-            'last_event': None,
-            'last_event_time': 0,
-            'salary': 25000,  # Зарплата в конце месяца
-            'trait': None,    # Черта личности
-            'trait_selected': False,  # Выбрана ли черта
-            'current_job': 'delivery',  # Текущая работа
-            'unlocked_jobs': ['delivery'],  # Открытые работы
-            'boosters': {},  # Активные бустеры {booster_id: days_left}
-            'owned_items': [],  # Купленные предметы
-            'cars': [],  # Купленные машины
-            'real_estate': [],  # Купленная недвижимость
-            'credits': [],  # Активные кредиты
-            'monthly_income': 0,  # Пассивный доход
-            'monthly_expenses': 0,  # Ежемесячные расходы
-            'completed_goals': [],  # Выполненные цели
-            'total_goals_completed': 0,  # Счетчик выполненных целей
-            'worked_today': False,  # Работал ли сегодня
-            'mood': 50,  # Настроение (0-100)
-            'total_earned': 0,  # Всего заработано
-            'total_spent': 0,  # Всего потрачено
-            'work_count': 0,  # Сколько раз работал
-            'health': 100,  # Здоровье (0-100)
-            'skills': {  # Навыки
-                'speed': 1,  # Скорость (меньше энергии на работу)
-                'luck': 1,  # Удача (больше шанс позитивных событий)
-                'charisma': 1,  # Харизма (больше доход)
-                'intelligence': 1  # Интеллект (быстрее прокачка)
-            },
-            'skill_points': 0  # Очки навыков
-        }
+        # Пытаемся загрузить из БД
+        db_data = load_user_data(user_id)
+        if db_data:
+            users_data[user_id] = db_data
+        else:
+            # Создаем нового пользователя
+            users_data[user_id] = {
+                'money': 500,  # Стартовые деньги
+                'day': 1,      # Текущий день
+                'max_days': 30, # До зарплаты
+                'energy': 100,
+                'max_energy': 100,
+                'money_per_work': 50,  # За одно нажатие "работать"
+                'last_event': None,
+                'last_event_time': 0,
+                'salary': 25000,  # Зарплата в конце месяца
+                'trait': None,    # Черта личности
+                'trait_selected': False,  # Выбрана ли черта
+                'current_job': 'delivery',  # Текущая работа
+                'unlocked_jobs': ['delivery'],  # Открытые работы
+                'boosters': {},  # Активные бустеры {booster_id: days_left}
+                'owned_items': [],  # Купленные предметы
+                'cars': [],  # Купленные машины
+                'real_estate': [],  # Купленная недвижимость
+                'credits': [],  # Активные кредиты
+                'monthly_income': 0,  # Пассивный доход
+                'monthly_expenses': 0,  # Ежемесячные расходы
+                'completed_goals': [],  # Выполненные цели
+                'total_goals_completed': 0,  # Счетчик выполненных целей
+                'worked_today': False,  # Работал ли сегодня
+                'mood': 50,  # Настроение (0-100)
+                'total_earned': 0,  # Всего заработано
+                'total_spent': 0,  # Всего потрачено
+                'work_count': 0,  # Сколько раз работал
+                'health': 100,  # Здоровье (0-100)
+                'skills': {  # Навыки
+                    'speed': 1,  # Скорость (меньше энергии на работу)
+                    'luck': 1,  # Удача (больше шанс позитивных событий)
+                    'charisma': 1,  # Харизма (больше доход)
+                    'intelligence': 1  # Интеллект (быстрее прокачка)
+                },
+                'skill_points': 0,  # Очки навыков
+                'rest_count': 0,  # Сколько раз отдыхал сегодня
+                'had_credits': False  # Брал ли когда-либо кредиты
+            }
+            # Сохраняем нового пользователя в БД
+            save_user_data(user_id, users_data[user_id])
+    
     return jsonify(users_data[user_id])
 
 @app.route('/api/reset/<user_id>', methods=['POST'])
@@ -475,6 +537,9 @@ def check_goals():
     user = users_data[user_id]
     newly_completed = check_and_complete_goals(user)
     
+    # Сохраняем изменения в БД
+    save_user_data(user_id, user)
+    
     return jsonify({
         'user': user,
         'newly_completed_goals': newly_completed
@@ -500,6 +565,9 @@ def change_job():
         return jsonify({"error": "Job not unlocked"}), 400
         
     user['current_job'] = job_id
+    
+    # Сохраняем изменения в БД
+    save_user_data(user_id, user)
     
     return jsonify({
         'user': user,
@@ -553,6 +621,9 @@ def buy_booster():
         if 'boosters' not in user:
             user['boosters'] = {}
         user['boosters'][booster_id] = booster['duration']
+    
+    # Сохраняем изменения в БД
+    save_user_data(user_id, user)
     
     return jsonify({
         'user': user,
@@ -700,6 +771,9 @@ def buy_car():
         # Проверяем выполнение целей
         newly_completed_goals = check_and_complete_goals(user)
         
+        # Сохраняем изменения в БД
+        save_user_data(user_id, user)
+        
         return jsonify({
             'user': user,
             'car': car,
@@ -754,6 +828,9 @@ def buy_car():
         # Устанавливаем флаг что были кредиты (для цели "Без долгов")
         user['had_credits'] = True
         
+        # Сохраняем изменения в БД
+        save_user_data(user_id, user)
+        
         return jsonify({
             'user': user,
             'car': car,
@@ -803,6 +880,9 @@ def buy_real_estate():
         user['real_estate'].append(property_id)
         user['monthly_income'] += property_data['monthly_income']
         user['monthly_expenses'] += abs(property_data['monthly_cost'])
+        
+        # Сохраняем изменения в БД
+        save_user_data(user_id, user)
         
         return jsonify({
             'user': user,
@@ -858,6 +938,9 @@ def buy_real_estate():
         # Устанавливаем флаг что были кредиты (для цели "Без долгов")
         user['had_credits'] = True
         
+        # Сохраняем изменения в БД
+        save_user_data(user_id, user)
+        
         return jsonify({
             'user': user,
             'property': property_data,
@@ -892,6 +975,9 @@ def select_trait():
     user['trait'] = trait_id
     user['trait_selected'] = True
     
+    # Сохраняем изменения в БД
+    save_user_data(user_id, user)
+    
     return jsonify({
         'user': user,
         'trait': TRAITS[trait_id]
@@ -914,6 +1000,9 @@ def buy_food():
     
     user['money'] -= cost
     user['mood'] = min(100, user.get('mood', 50) + 10)
+    
+    # Сохраняем изменения в БД
+    save_user_data(user_id, user)
     
     return jsonify({
         'user': user,
@@ -939,6 +1028,9 @@ def take_rest():
     user['energy'] = min(user['max_energy'], user['energy'] + 20)
     user['mood'] = min(100, user.get('mood', 50) + 5)
     user['rest_count_today'] = rest_count + 1
+    
+    # Сохраняем изменения в БД
+    save_user_data(user_id, user)
     
     return jsonify({
         'user': user,
@@ -980,6 +1072,9 @@ def random_event():
         message += ' ' + ('+' if event_cost > 0 else '') + str(event_cost) + '₽'
     if mood_change != 0:
         message += ' ' + ('+' if mood_change > 0 else '') + str(mood_change) + ' настроения'
+    
+    # Сохраняем изменения в БД
+    save_user_data(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1036,6 +1131,9 @@ def play_roulette():
     elif multiplier >= 5:
         user['mood'] = min(100, user.get('mood', 50) + 15)
     
+    # Сохраняем изменения в БД
+    save_user_data(user_id, user)
+    
     return jsonify({
         'user': user,
         'multiplier': multiplier,
@@ -1078,6 +1176,9 @@ def upgrade_skill():
         'charisma': '💬 Харизма',
         'intelligence': '🧠 Интеллект'
     }
+    
+    # Сохраняем изменения в БД
+    save_user_data(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1225,6 +1326,9 @@ def work():
     # Проверяем выполнение целей
     newly_completed_goals = check_and_complete_goals(user)
     
+    # Сохраняем изменения в БД
+    save_user_data(user_id, user)
+    
     return jsonify({
         'user': user,
         'event': event,
@@ -1258,6 +1362,8 @@ def next_day():
             # Усталость не растёт в пропущенный день
             user['energy'] = user['max_energy']
             user['day'] += 1
+            # Сохраняем изменения в БД
+            save_user_data(user_id, user)
             return jsonify({
                 'user': user,
                 'day_skipped': True,
@@ -1294,6 +1400,9 @@ def next_day():
         
         # Проверяем выполнение целей
         newly_completed_goals = check_and_complete_goals(user)
+        
+        # Сохраняем изменения в БД
+        save_user_data(user_id, user)
         
         return jsonify({
             'user': user,
@@ -1366,6 +1475,9 @@ def next_day():
             job_names = [job['name'] for job in new_jobs]
             message += f"\n🎉 Открыты новые работы: {', '.join(job_names)}"
             
+        # Сохраняем изменения в БД
+        save_user_data(user_id, user)
+        
         return jsonify({
             'user': user,
             'daily_cost': daily_cost,
