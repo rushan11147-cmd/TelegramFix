@@ -985,7 +985,7 @@ def select_trait():
 
 @app.route('/api/buy_food', methods=['POST'])
 def buy_food():
-    """Купить еду - восстанавливает настроение"""
+    """Купить еду - восстанавливает настроение и здоровье"""
     data = request.json
     user_id = data.get('user_id')
     
@@ -1000,18 +1000,19 @@ def buy_food():
     
     user['money'] -= cost
     user['mood'] = min(100, user.get('mood', 50) + 10)
+    user['health'] = min(100, user.get('health', 100) + 15)  # Добавлено восстановление здоровья
     
     # Сохраняем изменения в БД
     save_user_data(user_id, user)
     
     return jsonify({
         'user': user,
-        'message': 'Вкусно поел! +10 настроения'
+        'message': 'Вкусно поел! +10 настроения, +15 здоровья'
     })
 
 @app.route('/api/take_rest', methods=['POST'])
 def take_rest():
-    """Отдохнуть - восстанавливает энергию и настроение"""
+    """Отдохнуть - восстанавливает энергию, настроение и здоровье"""
     data = request.json
     user_id = data.get('user_id')
     
@@ -1027,6 +1028,7 @@ def take_rest():
     
     user['energy'] = min(user['max_energy'], user['energy'] + 20)
     user['mood'] = min(100, user.get('mood', 50) + 5)
+    user['health'] = min(100, user.get('health', 100) + 10)  # Добавлено восстановление здоровья
     user['rest_count_today'] = rest_count + 1
     
     # Сохраняем изменения в БД
@@ -1034,7 +1036,7 @@ def take_rest():
     
     return jsonify({
         'user': user,
-        'message': f'Отдохнул! +20 энергии, +5 настроения ({2 - user["rest_count_today"]} раз осталось)'
+        'message': f'Отдохнул! +20 энергии, +5 настроения, +10 здоровья ({2 - user["rest_count_today"]} раз осталось)'
     })
 
 @app.route('/api/random_event', methods=['POST'])
@@ -1248,6 +1250,22 @@ def work():
     
     income = int(income * mood_modifier)
     
+    # Применяем модификатор здоровья
+    health = user.get('health', 100)
+    health_modifier = 1.0
+    if health <= 20:
+        health_modifier = 0.5  # -50% при критическом здоровье
+    elif health <= 40:
+        health_modifier = 0.7  # -30% при плохом здоровье
+    elif health <= 60:
+        health_modifier = 0.85  # -15% при усталости
+    elif health <= 80:
+        health_modifier = 0.95  # -5% при нормальном здоровье
+    else:
+        health_modifier = 1.0  # 0% при отличном здоровье
+    
+    income = int(income * health_modifier)
+    
     # Проверяем достаточно ли энергии
     if user['energy'] < energy_cost:
         return jsonify({"error": "Недостаточно энергии!"}), 400
@@ -1397,6 +1415,7 @@ def next_day():
         user['money'] += user['salary']
         user['day'] = 1
         user['energy'] = user['max_energy']
+        user['health'] = min(100, user.get('health', 100) + 30)  # Восстанавливаем здоровье
         
         # Проверяем выполнение целей
         newly_completed_goals = check_and_complete_goals(user)
@@ -1414,6 +1433,7 @@ def next_day():
     else:
         user['day'] += 1
         user['energy'] = user['max_energy']  # Восстанавливаем энергию
+        user['health'] = min(100, user.get('health', 100) + 30)  # Восстанавливаем здоровье
         
         # Ежемесячные расходы и доходы (в начале каждого месяца - каждые 30 дней)
         passive_income = 0
