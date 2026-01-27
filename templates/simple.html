@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Выживи до зарплаты</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -289,7 +290,7 @@
         <div class="top-bar">
             <div>День <span id="day">1</span> / 30</div>
             <div>💰 <span id="topMoney">500</span>₽</div>
-            <button class="close-btn" style="border: none; background: rgba(255,255,255,0.2);" onclick="showStats()">📊</button>
+            <button class="close-btn" style="border: none; background: rgba(255,255,255,0.2);" onclick="showStats()"><i class="fas fa-chart-bar"></i></button>
         </div>
         
         <div class="main-area">
@@ -329,30 +330,30 @@
                 
                 <div class="nav-buttons">
                     <button class="nav-btn" onclick="showJobs()">
-                        <span class="nav-btn-icon">💼</span>
+                        <span class="nav-btn-icon"><i class="fas fa-briefcase"></i></span>
                         Работа
                     </button>
                     <button class="nav-btn shop" onclick="showShop()">
-                        <span class="nav-btn-icon">🛒</span>
+                        <span class="nav-btn-icon"><i class="fas fa-shopping-cart"></i></span>
                         Магазин
                     </button>
                     <button class="nav-btn goals" onclick="showGoals()">
-                        <span class="nav-btn-icon">🏆</span>
+                        <span class="nav-btn-icon"><i class="fas fa-trophy"></i></span>
                         Достижения
                     </button>
                 </div>
                 
                 <div class="nav-buttons" style="grid-template-columns: repeat(3, 1fr);">
                     <button class="nav-btn" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); border-color: #ba4a00; padding: 10px;" onclick="buyFood()">
-                        <span class="nav-btn-icon" style="font-size: 20px; margin-bottom: 2px;">🍕</span>
+                        <span class="nav-btn-icon" style="font-size: 20px; margin-bottom: 2px;"><i class="fas fa-pizza-slice"></i></span>
                         <div style="font-size: 11px;">Еда -200₽</div>
                     </button>
                     <button class="nav-btn" style="background: linear-gradient(135deg, #16a085 0%, #138d75 100%); border-color: #117a65; padding: 10px;" onclick="takeRest()">
-                        <span class="nav-btn-icon" style="font-size: 20px; margin-bottom: 2px;">😴</span>
+                        <span class="nav-btn-icon" style="font-size: 20px; margin-bottom: 2px;"><i class="fas fa-bed"></i></span>
                         <div style="font-size: 11px;">Отдых +20⚡</div>
                     </button>
                     <button class="nav-btn" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); border-color: #21618c; padding: 10px;" onclick="showSkills()">
-                        <span class="nav-btn-icon" style="font-size: 20px; margin-bottom: 2px;">⭐</span>
+                        <span class="nav-btn-icon" style="font-size: 20px; margin-bottom: 2px;"><i class="fas fa-star"></i></span>
                         <div style="font-size: 11px;">Навыки</div>
                     </button>
                 </div>
@@ -370,32 +371,32 @@
                 </div>
                 
                 <button class="work-button" id="workBtn" onclick="work()">
-                    Поработать 💼
+                    <i class="fas fa-briefcase"></i> Поработать
                 </button>
                 
                 <button class="work-button" id="workAllBtn" onclick="workUntilExhausted()" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); border-color: #ca6f1e;">
-                    Работать до конца дня ⚡
+                    <i class="fas fa-bolt"></i> Работать до конца дня
                 </button>
                 
                 <button class="work-button" onclick="randomEvent()" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); border-color: #7d3c98;">
-                    Случайное событие 🎲
+                    <i class="fas fa-dice"></i> Случайное событие
                 </button>
                 
                 <button class="work-button" onclick="showRoulette()" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); border-color: #a93226;">
-                    Рулетка 🎰
+                    <i class="fas fa-dice-five"></i> Рулетка
                 </button>
             </div>
         </div>
         
         <button class="next-day-btn" id="nextDayBtn" onclick="confirmEndDay()">
-            Закончить день и отдохнуть 🌙
+            <i class="fas fa-moon"></i> Закончить день и отдохнуть
         </button>
     </div>
     
     <div class="modal" id="jobsModal">
         <div class="modal-content">
             <div class="modal-header">
-                <div style="font-size: 20px; font-weight: bold;">Выбери работу</div>
+                <div style="font-size: 20px; font-weight: bold;"><i class="fas fa-briefcase"></i> Выбери работу</div>
                 <button class="close-btn" onclick="document.getElementById('jobsModal').style.display='none'">×</button>
             </div>
             <div class="modal-body" id="jobsList"></div>
@@ -405,13 +406,13 @@
     <div class="modal" id="shopModal">
         <div class="modal-content">
             <div class="modal-header">
-                <div style="font-size: 20px; font-weight: bold;">Магазин</div>
+                <div style="font-size: 20px; font-weight: bold;"><i class="fas fa-shopping-cart"></i> Магазин</div>
                 <button class="close-btn" onclick="document.getElementById('shopModal').style.display='none'">×</button>
             </div>
             <div class="shop-tabs">
-                <button class="shop-tab active" onclick="showShopTab('boosters')">🥤 Бустеры</button>
-                <button class="shop-tab" onclick="showShopTab('cars')">🚗 Машины</button>
-                <button class="shop-tab" onclick="showShopTab('realestate')">🏠 Недвижимость</button>
+                <button class="shop-tab active" onclick="showShopTab('boosters')"><i class="fas fa-coffee"></i> Бустеры</button>
+                <button class="shop-tab" onclick="showShopTab('cars')"><i class="fas fa-car"></i> Машины</button>
+                <button class="shop-tab" onclick="showShopTab('realestate')"><i class="fas fa-home"></i> Недвижимость</button>
             </div>
             <div class="modal-body" id="shopList"></div>
         </div>
@@ -420,7 +421,7 @@
     <div class="modal" id="goalsModal">
         <div class="modal-content">
             <div class="modal-header">
-                <div style="font-size: 20px; font-weight: bold;">Достижения</div>
+                <div style="font-size: 20px; font-weight: bold;"><i class="fas fa-trophy"></i> Достижения</div>
                 <button class="close-btn" onclick="document.getElementById('goalsModal').style.display='none'">×</button>
             </div>
             <div class="modal-body" id="goalsList"></div>
@@ -442,7 +443,7 @@
     <div class="modal" id="statsModal">
         <div class="modal-content">
             <div class="modal-header">
-                <div style="font-size: 20px; font-weight: bold;">📊 Статистика</div>
+                <div style="font-size: 20px; font-weight: bold;"><i class="fas fa-chart-bar"></i> Статистика</div>
                 <button class="close-btn" onclick="document.getElementById('statsModal').style.display='none'">×</button>
             </div>
             <div class="modal-body">
@@ -473,7 +474,7 @@
     <div class="modal" id="rouletteModal">
         <div class="modal-content">
             <div class="modal-header">
-                <div style="font-size: 20px; font-weight: bold;">🎰 Рулетка</div>
+                <div style="font-size: 20px; font-weight: bold;"><i class="fas fa-dice-five"></i> Рулетка</div>
                 <button class="close-btn" onclick="document.getElementById('rouletteModal').style.display='none'">×</button>
             </div>
             <div class="modal-body" style="text-align: center;">
@@ -494,13 +495,13 @@
     <div class="modal" id="skillsModal">
         <div class="modal-content">
             <div class="modal-header">
-                <div style="font-size: 20px; font-weight: bold;">⭐ Навыки</div>
+                <div style="font-size: 20px; font-weight: bold;"><i class="fas fa-star"></i> Навыки</div>
                 <button class="close-btn" onclick="document.getElementById('skillsModal').style.display='none'">×</button>
             </div>
             <div class="modal-body">
                 <div style="text-align: center; margin-bottom: 20px;">
                     <div style="font-size: 24px; font-weight: bold; color: #f39c12;">
-                        Очков навыков: <span id="skillPoints">0</span> ⭐
+                        Очков навыков: <span id="skillPoints">0</span> <i class="fas fa-star"></i>
                     </div>
                     <div style="font-size: 14px; color: #888; margin-top: 5px;">
                         Получай очки за работу!
@@ -509,7 +510,7 @@
                 
                 <div class="item-card" onclick="upgradeSkill('speed')">
                     <div class="item-header">
-                        <div class="item-icon">🏃</div>
+                        <div class="item-icon"><i class="fas fa-running"></i></div>
                         <div class="item-name">Скорость</div>
                         <div class="item-price">Уровень <span id="speedLevel">1</span></div>
                     </div>
@@ -519,7 +520,7 @@
                 
                 <div class="item-card" onclick="upgradeSkill('luck')">
                     <div class="item-header">
-                        <div class="item-icon">🍀</div>
+                        <div class="item-icon"><i class="fas fa-clover"></i></div>
                         <div class="item-name">Удача</div>
                         <div class="item-price">Уровень <span id="luckLevel">1</span></div>
                     </div>
@@ -529,7 +530,7 @@
                 
                 <div class="item-card" onclick="upgradeSkill('charisma')">
                     <div class="item-header">
-                        <div class="item-icon">💬</div>
+                        <div class="item-icon"><i class="fas fa-comments"></i></div>
                         <div class="item-name">Харизма</div>
                         <div class="item-price">Уровень <span id="charismaLevel">1</span></div>
                     </div>
@@ -539,7 +540,7 @@
                 
                 <div class="item-card" onclick="upgradeSkill('intelligence')">
                     <div class="item-header">
-                        <div class="item-icon">🧠</div>
+                        <div class="item-icon"><i class="fas fa-brain"></i></div>
                         <div class="item-name">Интеллект</div>
                         <div class="item-price">Уровень <span id="intelligenceLevel">1</span></div>
                     </div>
