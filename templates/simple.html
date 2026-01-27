@@ -704,9 +704,11 @@
                     gameData = await response.json();
                     updateUI();
                     
-                    // Проверяем выбрана ли черта
+                    // Проверяем выбрана ли черта (с небольшой задержкой для загрузки DOM)
                     if (!gameData.trait_selected) {
-                        showTraitSelection();
+                        setTimeout(function() {
+                            showTraitSelection();
+                        }, 100);
                     }
                 }
             } catch (error) {
