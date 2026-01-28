@@ -368,3 +368,133 @@ save_user_data_safe(user_id, user)
 **Автор:** Kiro AI  
 **Дата:** 28 января 2026  
 **Версия:** 1.0
+
+
+---
+
+## 🚨 КРИТИЧЕСКОЕ ОБНОВЛЕНИЕ - Деплой 2
+
+**Дата:** 28 января 2026 (через несколько часов после первого деплоя)
+
+### Проблема после первого деплоя
+После применения исправлений безопасности данные снова начали сбрасываться при обновлении страницы.
+
+### Причина
+При удалении глобального кэша `users_data` остались **6 мест** в коде, где все еще использовался старый код:
+- `if user_id not in users_data:` - проверка существования
+- `user = users_data[user_id]` - получение данных
+- `with cache_lock:` - блокировка кэша
+
+Эти места вызывали ошибки, так как `users_data` больше не существует, что приводило к сбросу данных.
+
+### Исправленные эндпоинты
+
+#### 1. `/api/complete_tutorial`
+**Было:**
+```python
+if user_id not in users_data:
+    return jsonify({"error": "User not found"}), 404
+users_data[user_id]['tutorial_completed'] = True
+save_user_data(user_id, users_data[user_id])
+```
+
+**Стало:**
+```python
+user = get_user_data_safe(user_id)
+if not user:
+    return jsonify({"error": "Invalid user_id"}), 400
+user['tutorial_completed'] = True
+save_user_data_safe(user_id, user)
+```
+
+#### 2. `/api/change_job`
+**Было:**
+```python
+if user_id not in users_data:
+    return jsonify({"error": "User not found"}), 404
+user = users_data[user_id]
+```
+
+**Стало:**
+```python
+user = get_user_data_safe(user_id)
+if not user:
+    return jsonify({"error": "Invalid user_id"}), 400
+```
+
+#### 3. `/api/buy_booster`
+**Было:**
+```python
+if user_id not in users_data:
+    return jsonify({"error": "User not found"}), 404
+user = users_data[user_id]
+```
+
+**Стало:**
+```python
+user = get_user_data_safe(user_id)
+if not user:
+    return jsonify({"error": "Invalid user_id"}), 400
+```
+
+#### 4. `/api/buy_car`
+**Было:**
+```python
+if user_id not in users_data:
+    return jsonify({"error": "User not found"}), 404
+user = users_data[user_id]
+```
+
+**Стало:**
+```python
+user = get_user_data_safe(user_id)
+if not user:
+    return jsonify({"error": "Invalid user_id"}), 400
+```
+
+#### 5. `/api/buy_real_estate`
+**Было:**
+```python
+if user_id not in users_data:
+    return jsonify({"error": "User not found"}), 404
+user = users_data[user_id]
+```
+
+**Стало:**
+```python
+user = get_user_data_safe(user_id)
+if not user:
+    return jsonify({"error": "Invalid user_id"}), 400
+```
+
+#### 6. `/api/reset/<user_id>`
+**Было:**
+```python
+with cache_lock:
+    if user_id in users_data:
+        del users_data[user_id]
+# Удаляем из БД
+```
+
+**Стало:**
+```python
+# Удаляем из БД
+```
+
+### Результат
+✅ Все эндпоинты теперь используют `get_user_data_safe()` и `save_user_data_safe()`  
+✅ Нет больше упоминаний `users_data` в коде  
+✅ Нет больше упоминаний `cache_lock` в коде  
+✅ Данные должны сохраняться корректно  
+
+### Проверка
+После деплоя нужно проверить:
+1. Выбор черты характера - сохраняется ли
+2. Работа - сохраняются ли деньги и энергия
+3. Обновление страницы - не сбрасываются ли данные
+4. Покупки - сохраняются ли купленные предметы
+
+---
+
+**Обновлено:** 28 января 2026, 23:45  
+**Статус:** Готово к деплою

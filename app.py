@@ -800,11 +800,12 @@ def complete_tutorial():
         return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
     
-    users_data[user_id]['tutorial_completed'] = True
-    save_user_data(user_id, users_data[user_id])
+    user['tutorial_completed'] = True
+    save_user_data_safe(user_id, user)
     
     return jsonify({'success': True})
 
@@ -865,10 +866,6 @@ def get_leaderboard():
 @app.route('/api/reset/<user_id>', methods=['POST'])
 def reset_user(user_id):
     """Сбросить данные пользователя (начать заново)"""
-    with cache_lock:
-        if user_id in users_data:
-            del users_data[user_id]
-    
     # Удаляем из БД
     with db_lock:
         if USE_POSTGRES:
@@ -949,13 +946,12 @@ def change_job():
     user_id = data.get('user_id')
     job_id = data.get('job_id')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
         
     if job_id not in JOBS:
         return jsonify({"error": "Invalid job"}), 400
-        
-    user = users_data[user_id]
     
     # Проверяем, открыта ли работа
     if job_id not in user.get('unlocked_jobs', []):
@@ -981,13 +977,13 @@ def buy_booster():
     user_id = data.get('user_id')
     booster_id = data.get('booster_id')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
         
     if booster_id not in BOOSTERS:
         return jsonify({"error": "Invalid booster"}), 400
         
-    user = users_data[user_id]
     booster = BOOSTERS[booster_id]
     
     # Применяем скидку для черты "Экономный"
@@ -1141,13 +1137,13 @@ def buy_car():
     down_payment = data.get('down_payment', 0)
     term_months = data.get('term_months', 12)
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
         
     if car_id not in CARS:
         return jsonify({"error": "Invalid car"}), 400
         
-    user = users_data[user_id]
     car = CARS[car_id]
     
     # Проверяем, есть ли уже такая машина
@@ -1256,13 +1252,13 @@ def buy_real_estate():
     down_payment = data.get('down_payment', 0)
     term_months = data.get('term_months', 240)  # 20 лет по умолчанию
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
         
     if property_id not in REAL_ESTATE:
         return jsonify({"error": "Invalid property"}), 400
         
-    user = users_data[user_id]
     property_data = REAL_ESTATE[property_id]
     
     # Проверяем, есть ли уже такая недвижимость
