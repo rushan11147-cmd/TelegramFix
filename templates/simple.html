@@ -418,6 +418,7 @@
         <div class="top-bar">
             <div>Месяц <span id="month">1</span> | День <span id="day">1</span> / 30</div>
             <div>💰 <span id="topMoney">500</span>₽</div>
+            <button class="close-btn" style="border: none; background: rgba(255,255,255,0.2); margin-right: 5px;" onclick="showLeaderboard()"><i class="fas fa-trophy"></i></button>
             <button class="close-btn" style="border: none; background: rgba(255,255,255,0.2);" onclick="showStats()"><i class="fas fa-chart-bar"></i></button>
         </div>
         
@@ -679,6 +680,72 @@
         </div>
     </div>
     
+    <!-- Модальное окно: Приветствие и гайд -->
+    <div class="modal" id="welcomeModal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h2 style="margin: 0; color: white;"><i class="fas fa-hand-wave"></i> Добро пожаловать!</h2>
+            </div>
+            <div class="modal-body" style="padding: 25px; line-height: 1.8; color: #2c3e50;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <p style="font-size: 18px; margin-bottom: 15px;">👋 Привет! Рады видеть тебя в игре <strong>"Выживи до зарплаты"</strong></p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h3 style="margin-top: 0; color: #667eea;"><i class="fas fa-gamepad"></i> Как играть:</h3>
+                    <ul style="margin: 10px 0; padding-left: 25px;">
+                        <li style="margin-bottom: 10px;"><strong>💼 Работай</strong> — зарабатывай деньги, но следи за энергией</li>
+                        <li style="margin-bottom: 10px;"><strong>🛒 Покупай</strong> — бустеры, машины и недвижимость помогут тебе</li>
+                        <li style="margin-bottom: 10px;"><strong>🎯 Выполняй цели</strong> — получай награды за достижения</li>
+                        <li style="margin-bottom: 10px;"><strong>📅 Доживи до зарплаты</strong> — 30 дней до получения денег</li>
+                        <li style="margin-bottom: 10px;"><strong>🎲 Рискуй</strong> — рулетка может принести удачу</li>
+                    </ul>
+                </div>
+                
+                <div style="background: #fff3cd; padding: 15px; border-radius: 12px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+                    <p style="margin: 0;"><i class="fas fa-lightbulb"></i> <strong>Совет:</strong> Следи за здоровьем и настроением — они влияют на твой доход!</p>
+                </div>
+                
+                <div style="text-align: center;">
+                    <button onclick="showNameInput()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; border-radius: 12px; font-size: 16px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                        <i class="fas fa-arrow-right"></i> Начать игру
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно: Ввод имени -->
+    <div class="modal" id="nameModal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h2 style="margin: 0; color: white;"><i class="fas fa-user-edit"></i> Как тебя зовут?</h2>
+            </div>
+            <div class="modal-body" style="padding: 30px; text-align: center;">
+                <p style="font-size: 16px; color: #555; margin-bottom: 20px;">Придумай имя для своего персонажа</p>
+                <input type="text" id="playerNameInput" placeholder="Введи имя (2-20 символов)" maxlength="20" style="width: 100%; padding: 15px; border: 2px solid #667eea; border-radius: 12px; font-size: 16px; text-align: center; margin-bottom: 20px; box-sizing: border-box;">
+                <button onclick="setPlayerName()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; border-radius: 12px; font-size: 16px; cursor: pointer; font-weight: bold; width: 100%; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                    <i class="fas fa-check"></i> Подтвердить
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно: Таблица лидеров -->
+    <div class="modal" id="leaderboardModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-trophy"></i> Таблица лидеров</h2>
+                <button class="close-btn" onclick="closeLeaderboard()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <div id="leaderboardContent" style="max-height: 500px; overflow-y: auto;">
+                    <p style="text-align: center; color: #999;">Загрузка...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="message" id="message"></div>
     
     <script>
@@ -715,6 +782,14 @@
                 if (response.ok) {
                     gameData = await response.json();
                     updateUI();
+                    
+                    // Проверяем нужно ли показать приветствие
+                    if (!gameData.tutorial_completed) {
+                        setTimeout(() => {
+                            document.getElementById('welcomeModal').style.display = 'flex';
+                        }, 300);
+                        return;
+                    }
                     
                     // Проверяем выбрана ли черта (с небольшой задержкой для загрузки DOM)
                     if (!gameData.trait_selected) {
@@ -1480,6 +1555,146 @@
             } catch (error) {
                 showMessage('Ошибка загрузки!', false);
             }
+        }
+        
+        // ============================================
+        // ПРИВЕТСТВИЕ И ИМЯ ИГРОКА
+        // ============================================
+        
+        function showNameInput() {
+            document.getElementById('welcomeModal').style.display = 'none';
+            document.getElementById('nameModal').style.display = 'flex';
+            document.getElementById('playerNameInput').focus();
+        }
+        
+        async function setPlayerName() {
+            const nameInput = document.getElementById('playerNameInput');
+            const playerName = nameInput.value.trim();
+            
+            if (!playerName || playerName.length < 2) {
+                showMessage('Имя должно быть минимум 2 символа!', false);
+                return;
+            }
+            
+            if (playerName.length > 20) {
+                showMessage('Имя слишком длинное (макс 20 символов)!', false);
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/set_name', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, player_name: playerName })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    gameData.player_name = playerName;
+                    gameData.name_set = true;
+                    
+                    document.getElementById('nameModal').style.display = 'none';
+                    showMessage(data.message, true);
+                    
+                    // Отмечаем гайд как пройденный
+                    await fetch('/api/complete_tutorial', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: userId })
+                    });
+                    
+                    gameData.tutorial_completed = true;
+                    
+                    // Показываем выбор черты
+                    if (!gameData.trait_selected) {
+                        setTimeout(() => showTraitSelection(), 500);
+                    }
+                } else {
+                    const error = await response.json();
+                    showMessage(error.error || 'Ошибка!', false);
+                }
+            } catch (error) {
+                showMessage('Ошибка сети!', false);
+            }
+        }
+        
+        // Enter для подтверждения имени
+        document.addEventListener('DOMContentLoaded', () => {
+            const nameInput = document.getElementById('playerNameInput');
+            if (nameInput) {
+                nameInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        setPlayerName();
+                    }
+                });
+            }
+        });
+        
+        // ============================================
+        // ТАБЛИЦА ЛИДЕРОВ
+        // ============================================
+        
+        async function showLeaderboard() {
+            document.getElementById('leaderboardModal').style.display = 'flex';
+            document.getElementById('leaderboardContent').innerHTML = '<p style="text-align: center; color: #999;">Загрузка...</p>';
+            
+            try {
+                const response = await fetch('/api/leaderboard');
+                if (response.ok) {
+                    const players = await response.json();
+                    
+                    if (players.length === 0) {
+                        document.getElementById('leaderboardContent').innerHTML = '<p style="text-align: center; color: #999;">Пока нет игроков в таблице</p>';
+                        return;
+                    }
+                    
+                    let html = '<div style="overflow-x: auto;">';
+                    html += '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<thead><tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">';
+                    html += '<th style="padding: 12px; text-align: center;">#</th>';
+                    html += '<th style="padding: 12px; text-align: left;">Игрок</th>';
+                    html += '<th style="padding: 12px; text-align: center;">Месяц</th>';
+                    html += '<th style="padding: 12px; text-align: right;">Деньги</th>';
+                    html += '<th style="padding: 12px; text-align: center;">Цели</th>';
+                    html += '</tr></thead><tbody>';
+                    
+                    players.forEach((player, index) => {
+                        const rank = index + 1;
+                        let medal = '';
+                        let bgColor = '';
+                        
+                        if (rank === 1) {
+                            medal = '🥇';
+                            bgColor = 'background: #fff9e6;';
+                        } else if (rank === 2) {
+                            medal = '🥈';
+                            bgColor = 'background: #f5f5f5;';
+                        } else if (rank === 3) {
+                            medal = '🥉';
+                            bgColor = 'background: #fff5f0;';
+                        }
+                        
+                        html += `<tr style="${bgColor} border-bottom: 1px solid #eee;">`;
+                        html += `<td style="padding: 12px; text-align: center; font-weight: bold;">${medal} ${rank}</td>`;
+                        html += `<td style="padding: 12px; text-align: left; font-weight: bold;">${player.player_name}</td>`;
+                        html += `<td style="padding: 12px; text-align: center;">${player.month}</td>`;
+                        html += `<td style="padding: 12px; text-align: right; color: #27ae60; font-weight: bold;">${player.money.toLocaleString()}₽</td>`;
+                        html += `<td style="padding: 12px; text-align: center;">${player.total_goals}</td>`;
+                        html += '</tr>';
+                    });
+                    
+                    html += '</tbody></table></div>';
+                    document.getElementById('leaderboardContent').innerHTML = html;
+                } else {
+                    document.getElementById('leaderboardContent').innerHTML = '<p style="text-align: center; color: #e74c3c;">Ошибка загрузки</p>';
+                }
+            } catch (error) {
+                document.getElementById('leaderboardContent').innerHTML = '<p style="text-align: center; color: #e74c3c;">Ошибка сети</p>';
+            }
+        }
+        
+        function closeLeaderboard() {
+            document.getElementById('leaderboardModal').style.display = 'none';
         }
         
         loadUserData();

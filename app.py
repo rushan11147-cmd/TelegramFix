@@ -447,6 +447,9 @@ def get_user(user_id):
         else:
             # Создаем нового пользователя
             users_data[user_id] = {
+                'player_name': None,  # Имя игрока
+                'name_set': False,    # Установлено ли имя
+                'tutorial_completed': False,  # Пройден ли гайд
                 'money': 500,  # Стартовые деньги
                 'day': 1,      # Текущий день
                 'max_days': 30, # До зарплаты
@@ -490,6 +493,88 @@ def get_user(user_id):
             save_user_data(user_id, users_data[user_id])
     
     return jsonify(users_data[user_id])
+
+@app.route('/api/set_name', methods=['POST'])
+def set_player_name():
+    """Установить имя игрока"""
+    data = request.json
+    user_id = data.get('user_id')
+    player_name = data.get('player_name', '').strip()
+    
+    if user_id not in users_data:
+        return jsonify({"error": "User not found"}), 404
+    
+    if not player_name or len(player_name) < 2:
+        return jsonify({"error": "Имя должно быть минимум 2 символа"}), 400
+    
+    if len(player_name) > 20:
+        return jsonify({"error": "Имя слишком длинное (макс 20 символов)"}), 400
+    
+    users_data[user_id]['player_name'] = player_name
+    users_data[user_id]['name_set'] = True
+    save_user_data(user_id, users_data[user_id])
+    
+    return jsonify({
+        'success': True,
+        'player_name': player_name,
+        'message': f'Добро пожаловать, {player_name}!'
+    })
+
+@app.route('/api/complete_tutorial', methods=['POST'])
+def complete_tutorial():
+    """Отметить гайд как пройденный"""
+    data = request.json
+    user_id = data.get('user_id')
+    
+    if user_id not in users_data:
+        return jsonify({"error": "User not found"}), 404
+    
+    users_data[user_id]['tutorial_completed'] = True
+    save_user_data(user_id, users_data[user_id])
+    
+    return jsonify({'success': True})
+
+@app.route('/api/leaderboard')
+def get_leaderboard():
+    """Получить таблицу лидеров"""
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            # Получаем топ-50 игроков по деньгам
+            cursor.execute('''
+                SELECT user_id, data FROM users
+            ''')
+            
+            players = []
+            for row in cursor.fetchall():
+                user_id, data_json = row
+                try:
+                    user_data = json.loads(data_json)
+                    # Только игроки с установленным именем
+                    if user_data.get('name_set') and user_data.get('player_name'):
+                        players.append({
+                            'player_name': user_data['player_name'],
+                            'money': user_data.get('money', 0),
+                            'month': user_data.get('month', 1),
+                            'total_earned': user_data.get('total_earned', 0),
+                            'total_goals': user_data.get('total_goals_completed', 0)
+                        })
+                except:
+                    continue
+            
+            conn.close()
+            
+            # Сортируем по деньгам
+            players.sort(key=lambda x: x['money'], reverse=True)
+            
+            # Возвращаем топ-50
+            return jsonify(players[:50])
+            
+    except Exception as e:
+        print(f"Ошибка получения таблицы лидеров: {e}")
+        return jsonify([])
 
 @app.route('/api/reset/<user_id>', methods=['POST'])
 def reset_user(user_id):
