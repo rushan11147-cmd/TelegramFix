@@ -1116,12 +1116,14 @@
             document.getElementById('month').textContent = gameData.month || 1;
             document.getElementById('money').textContent = gameData.money || 500;
             document.getElementById('topMoney').textContent = gameData.money || 500;
-            document.getElementById('energyDisplay').textContent = (gameData.energy || 100) + '/100';
-            
-            const energyPercent = ((gameData.energy || 100) / 100) * 100;
-            document.getElementById('moneyFill').style.width = energyPercent + '%';
             
             const currentEnergy = gameData.energy || 100;
+            const maxEnergy = gameData.max_energy || 100;
+            document.getElementById('energyDisplay').textContent = currentEnergy + '/' + maxEnergy;
+            
+            const energyPercent = (currentEnergy / maxEnergy) * 100;
+            document.getElementById('moneyFill').style.width = energyPercent + '%';
+            
             document.getElementById('workBtn').disabled = currentEnergy <= 0;
             document.getElementById('workAllBtn').disabled = currentEnergy <= 0;
             
@@ -1315,9 +1317,11 @@
             
             let totalIncome = 0;
             let workCount = 0;
+            let consecutiveErrors = 0;
+            const maxErrors = 3;
             
             // Работаем пока есть энергия
-            while (gameData.energy > 0) {
+            while (gameData.energy > 0 && consecutiveErrors < maxErrors) {
                 try {
                     const response = await fetch('/api/work', {
                         method: 'POST',
@@ -1330,20 +1334,42 @@
                         gameData = result.user;
                         totalIncome += result.income;
                         workCount++;
+                        consecutiveErrors = 0; // Сбрасываем счётчик ошибок
                         updateUI();
                         
                         // Небольшая задержка для визуального эффекта
                         await new Promise(resolve => setTimeout(resolve, 300));
                     } else {
-                        break;
+                        const error = await response.json();
+                        // Если нет энергии - это нормально, выходим
+                        if (error.error && error.error.includes('энергии')) {
+                            break;
+                        }
+                        consecutiveErrors++;
+                        if (consecutiveErrors >= maxErrors) {
+                            showMessage('Слишком много ошибок, остановка', false);
+                            break;
+                        }
+                        // Ждём перед повторной попыткой
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 } catch (error) {
-                    showMessage('Ошибка!', false);
-                    break;
+                    console.error('Ошибка при работе:', error);
+                    consecutiveErrors++;
+                    if (consecutiveErrors >= maxErrors) {
+                        showMessage('Ошибка соединения! Остановка', false);
+                        break;
+                    }
+                    // Ждём перед повторной попыткой
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                 }
             }
             
-            showMessage('Отработал весь день! 💪 Заработано: +' + totalIncome + '₽ (' + workCount + ' раз)', true);
+            if (workCount > 0) {
+                showMessage(`Отработал весь день! 💪 Заработано: +${totalIncome}₽ (${workCount} раз)`, true);
+            } else {
+                showMessage('Не удалось поработать', false);
+            }
         }
         
         function showJobs() {
