@@ -78,7 +78,35 @@
             font-size: 14px;
         }
         
-        .right-panel { display: flex; flex-direction: column; gap: 12px; }
+        .right-panel { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px;
+            background-image: url('/static/room-bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 15px;
+            padding: 15px;
+            position: relative;
+        }
+        
+        .right-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 15px;
+            z-index: 0;
+        }
+        
+        .right-panel > * {
+            position: relative;
+            z-index: 1;
+        }
         
         .money-progress {
             background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
