@@ -796,38 +796,48 @@
     <div class="message" id="message"></div>
     
     <script>
-        let userId = 'demo_user';
-        let gameData = {};
+        // Получаем или создаем userId
+        let userId = localStorage.getItem('userId');
         
-        // Получаем ID пользователя из Telegram
-        try {
-            if (window.Telegram && window.Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                tg.ready();
-                tg.expand();
-                
-                // Пробуем получить ID пользователя
-                const user = tg.initDataUnsafe?.user;
-                if (user && user.id) {
-                    userId = 'tg_' + user.id.toString();
-                    console.log('✅ Telegram User ID:', userId);
-                    console.log('✅ User data:', user);
+        // Если userId нет в localStorage, пробуем получить из Telegram или создаем новый
+        if (!userId) {
+            try {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const tg = window.Telegram.WebApp;
+                    tg.ready();
+                    tg.expand();
+                    
+                    // Пробуем получить ID пользователя из Telegram
+                    const user = tg.initDataUnsafe?.user;
+                    if (user && user.id) {
+                        userId = 'tg_' + user.id.toString();
+                        console.log('✅ Telegram User ID:', userId);
+                        console.log('✅ User data:', user);
+                    } else {
+                        console.warn('⚠️ Не удалось получить Telegram ID');
+                        console.warn('⚠️ initDataUnsafe:', tg.initDataUnsafe);
+                        // Генерируем уникальный ID для браузера (ОДИН РАЗ!)
+                        userId = 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    }
                 } else {
-                    console.warn('⚠️ Не удалось получить Telegram ID');
-                    console.warn('⚠️ initDataUnsafe:', tg.initDataUnsafe);
-                    // Генерируем уникальный ID для браузера
+                    console.warn('⚠️ Telegram WebApp не доступен');
+                    // Генерируем уникальный ID для браузера (ОДИН РАЗ!)
                     userId = 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 }
-            } else {
-                console.warn('⚠️ Telegram WebApp не доступен');
-                // Генерируем уникальный ID для браузера
+            } catch (error) {
+                console.error('❌ Ошибка получения Telegram ID:', error);
+                // Генерируем уникальный ID для браузера (ОДИН РАЗ!)
                 userId = 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             }
-        } catch (error) {
-            console.error('❌ Ошибка получения Telegram ID:', error);
-            // Генерируем уникальный ID для браузера
-            userId = 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // СОХРАНЯЕМ userId в localStorage!
+            localStorage.setItem('userId', userId);
+            console.log('💾 Сохранен новый userId:', userId);
+        } else {
+            console.log('✅ Загружен userId из localStorage:', userId);
         }
+        
+        let gameData = {};
         
         console.log('🎮 Игра запущена для пользователя:', userId);
         
