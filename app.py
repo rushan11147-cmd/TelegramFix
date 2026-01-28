@@ -225,79 +225,121 @@ def load_user_data(user_id):
 # Инициализируем БД при старте
 init_db()
 
-# Кэш пользователей с thread-safe доступом
-users_data = {}  # Оставляем старое имя для совместимости
-cache_lock = Lock()
+# Валидация user_id
+import re
+
+def validate_user_id(user_id):
+    """Валидация user_id для защиты от инъекций"""
+    if not user_id or not isinstance(user_id, str):
+        return False
+    if len(user_id) > 100:
+        return False
+    # Разрешаем только буквы, цифры, подчеркивание и дефис
+    if not re.match(r'^[a-zA-Z0-9_-]+$', user_id):
+        return False
+    return True
+
+def clamp(value, min_val, max_val):
+    """Ограничить значение в диапазоне"""
+    return max(min_val, min(max_val, value))
 
 def get_user_data_safe(user_id):
-    """Получить данные пользователя (thread-safe)"""
-    with cache_lock:
-        if user_id not in users_data:
-            # Загружаем из БД
-            db_data = load_user_data(user_id)
-            if db_data:
-                users_data[user_id] = db_data
-                
-                # ИСПРАВЛЕНИЕ: Если max_energy не установлен или меньше 100, исправляем
-                if 'max_energy' not in users_data[user_id] or users_data[user_id]['max_energy'] < 100:
-                    users_data[user_id]['max_energy'] = 100
-                    logger.info(f"Fixed max_energy for user {user_id}")
-                    save_user_data(user_id, users_data[user_id])
-            else:
-                # Создаем нового пользователя
-                users_data[user_id] = {
-                    'player_name': None,
-                    'name_set': False,
-                    'tutorial_completed': False,
-                    'money': 500,
-                    'day': 1,
-                    'max_days': 30,
-                    'month': 1,
-                    'energy': 100,
-                    'max_energy': 100,
-                    'money_per_work': 50,
-                    'last_event': None,
-                    'last_event_time': 0,
-                    'salary': 25000,
-                    'trait': None,
-                    'trait_selected': False,
-                    'current_job': 'delivery',
-                    'unlocked_jobs': ['delivery'],
-                    'boosters': {},
-                    'owned_items': [],
-                    'cars': [],
-                    'real_estate': [],
-                    'credits': [],
-                    'monthly_income': 0,
-                    'monthly_expenses': 0,
-                    'completed_goals': [],
-                    'total_goals_completed': 0,
-                    'worked_today': False,
-                    'mood': 50,
-                    'total_earned': 0,
-                    'total_spent': 0,
-                    'work_count': 0,
-                    'health': 100,
-                    'skills': {
-                        'speed': 1,
-                        'luck': 1,
-                        'charisma': 1,
-                        'intelligence': 1
-                    },
-                    'skill_points': 0,
-                    'rest_count': 0,
-                    'had_credits': False
-                }
-                save_user_data(user_id, users_data[user_id])
-                logger.info(f"Created new user: {user_id}")
+    """Получить данные пользователя - всегда из БД, без кэша"""
+    # Валидация user_id
+    if not validate_user_id(user_id):
+        logger.warning(f"Invalid user_id: {user_id}")
+        return None
+    
+    # Загружаем из БД
+    db_data = load_user_data(user_id)
+    if db_data:
+        # ИСПРАВЛЕНИЕ: Если max_energy не установлен или меньше 100, исправляем
+        if 'max_energy' not in db_data or db_data['max_energy'] < 100:
+            db_data['max_energy'] = 100
+            logger.info(f"Fixed max_energy for user {user_id}")
+            save_user_data(user_id, db_data)
         
-        return users_data[user_id]
+        # Проверяем что деньги не отрицательные
+        if db_data.get('money', 0) < 0:
+            logger.error(f"User {user_id} has negative money: {db_data['money']}, fixing")
+            db_data['money'] = 0
+            save_user_data(user_id, db_data)
+        
+        return db_data
+    else:
+        # Создаем нового пользователя
+        new_user = {
+            'player_name': None,
+            'name_set': False,
+            'tutorial_completed': False,
+            'money': 500,
+            'day': 1,
+            'max_days': 30,
+            'month': 1,
+            'energy': 100,
+            'max_energy': 100,
+            'money_per_work': 50,
+            'last_event': None,
+            'last_event_time': 0,
+            'salary': 25000,
+            'trait': None,
+            'trait_selected': False,
+            'current_job': 'delivery',
+            'unlocked_jobs': ['delivery'],
+            'boosters': {},
+            'owned_items': [],
+            'cars': [],
+            'real_estate': [],
+            'credits': [],
+            'monthly_income': 0,
+            'monthly_expenses': 0,
+            'completed_goals': [],
+            'total_goals_completed': 0,
+            'worked_today': False,
+            'mood': 50,
+            'total_earned': 0,
+            'total_spent': 0,
+            'work_count': 0,
+            'health': 100,
+            'skills': {
+                'speed': 1,
+                'luck': 1,
+                'charisma': 1,
+                'intelligence': 1
+            },
+            'skill_points': 0,
+            'rest_count': 0,
+            'had_credits': False
+        }
+        save_user_data(user_id, new_user)
+        logger.info(f"Created new user: {user_id}")
+        return new_user
 
-def save_user_data_safe(user_id):
-    """Сохранить данные пользователя (thread-safe)"""
-    with cache_lock:
-        if user_id in users_data:
-            save_user_data(user_id, users_data[user_id])
+def save_user_data_safe(user_id, user_data):
+    """Сохранить данные пользователя с валидацией"""
+    # Валидация user_id
+    if not validate_user_id(user_id):
+        logger.warning(f"Invalid user_id in save: {user_id}")
+        return False
+    
+    # Проверяем что деньги не отрицательные
+    if user_data.get('money', 0) < 0:
+        logger.error(f"Preventing negative money save for user {user_id}: {user_data['money']}")
+        user_data['money'] = 0
+    
+    # Ограничиваем значения в допустимых диапазонах
+    user_data['mood'] = clamp(user_data.get('mood', 50), 0, 100)
+    user_data['health'] = clamp(user_data.get('health', 100), 0, 100)
+    user_data['energy'] = clamp(user_data.get('energy', 100), 0, user_data.get('max_energy', 100))
+    
+    # Лимит на количество кредитов
+    MAX_CREDITS = 10
+    if len(user_data.get('credits', [])) > MAX_CREDITS:
+        logger.warning(f"User {user_id} has too many credits: {len(user_data['credits'])}")
+        user_data['credits'] = user_data['credits'][:MAX_CREDITS]
+    
+    save_user_data(user_id, user_data)
+    return True
 
 
 # События игры
@@ -729,8 +771,9 @@ def set_player_name():
     user_id = data.get('user_id')
     player_name = data.get('player_name', '').strip()
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
     
     if not player_name or len(player_name) < 2:
         return jsonify({"error": "Имя должно быть минимум 2 символа"}), 400
@@ -738,9 +781,9 @@ def set_player_name():
     if len(player_name) > 20:
         return jsonify({"error": "Имя слишком длинное (макс 20 символов)"}), 400
     
-    users_data[user_id]['player_name'] = player_name
-    users_data[user_id]['name_set'] = True
-    save_user_data(user_id, users_data[user_id])
+    user['player_name'] = player_name
+    user['name_set'] = True
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'success': True,
@@ -749,6 +792,7 @@ def set_player_name():
     })
 
 @app.route('/api/complete_tutorial', methods=['POST'])
+@limiter.limit("5 per minute")
 def complete_tutorial():
     """Отметить гайд как пройденный"""
     data = request.get_json(force=True, silent=True)
@@ -874,6 +918,7 @@ def get_goals():
     return jsonify(GLOBAL_GOALS)
 
 @app.route('/api/check_goals', methods=['POST'])
+@limiter.limit("10 per minute")
 def check_goals():
     """Проверить и выполнить цели пользователя"""
     data = request.get_json(force=True, silent=True)
@@ -896,6 +941,7 @@ def check_goals():
     })
 
 @app.route('/api/change_job', methods=['POST'])
+@limiter.limit("10 per minute")
 def change_job():
     """Сменить текущую работу"""
     data = request.get_json(force=True, silent=True)
@@ -927,6 +973,7 @@ def change_job():
     })
 
 @app.route('/api/buy_booster', methods=['POST'])
+@limiter.limit("10 per minute")
 def buy_booster():
     """Купить бустер"""
     data = request.get_json(force=True, silent=True)
@@ -1083,6 +1130,7 @@ def check_and_complete_goals(user):
     return newly_completed
 
 @app.route('/api/buy_car', methods=['POST'])
+@limiter.limit("10 per minute")
 def buy_car():
     """Купить машину"""
     data = request.get_json(force=True, silent=True)
@@ -1197,6 +1245,7 @@ def buy_car():
         })
 
 @app.route('/api/buy_real_estate', methods=['POST'])
+@limiter.limit("10 per minute")
 def buy_real_estate():
     """Купить недвижимость"""
     data = request.get_json(force=True, silent=True)
@@ -1314,6 +1363,7 @@ def get_traits():
     return jsonify(TRAITS)
 
 @app.route('/api/select_trait', methods=['POST'])
+@limiter.limit("5 per minute")
 def select_trait():
     """Выбрать черту личности"""
     data = request.get_json(force=True, silent=True)
@@ -1344,6 +1394,7 @@ def select_trait():
     })
 
 @app.route('/api/buy_food', methods=['POST'])
+@limiter.limit("20 per minute")
 def buy_food():
     """Купить еду - восстанавливает настроение и здоровье"""
     data = request.get_json(force=True, silent=True)
@@ -1373,6 +1424,7 @@ def buy_food():
     })
 
 @app.route('/api/take_rest', methods=['POST'])
+@limiter.limit("20 per minute")
 def take_rest():
     """Отдохнуть - восстанавливает энергию, настроение и здоровье"""
     data = request.get_json(force=True, silent=True)
@@ -1404,6 +1456,7 @@ def take_rest():
     })
 
 @app.route('/api/random_event', methods=['POST'])
+@limiter.limit("20 per minute")
 def random_event():
     """Случайное событие в течение дня"""
     data = request.get_json(force=True, silent=True)
@@ -1451,6 +1504,7 @@ def random_event():
     })
 
 @app.route('/api/play_roulette', methods=['POST'])
+@limiter.limit("10 per minute")
 def play_roulette():
     """Сыграть в рулетку"""
     data = request.get_json(force=True, silent=True)
@@ -1512,6 +1566,7 @@ def play_roulette():
     })
 
 @app.route('/api/upgrade_skill', methods=['POST'])
+@limiter.limit("10 per minute")
 def upgrade_skill():
     """Прокачать навык"""
     data = request.get_json(force=True, silent=True)
@@ -1730,6 +1785,7 @@ def work():
     })
 
 @app.route('/api/next_day', methods=['POST'])
+@limiter.limit("10 per minute")
 def next_day():
     """Переход к следующему дню"""
     data = request.get_json(force=True, silent=True)
