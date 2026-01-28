@@ -250,9 +250,13 @@ def get_user_data_safe(user_id):
         logger.warning(f"Invalid user_id: {user_id}")
         return None
     
+    logger.info(f"Loading user data for: {user_id}")
+    
     # Загружаем из БД
     db_data = load_user_data(user_id)
     if db_data:
+        logger.info(f"User {user_id} found in DB - money: {db_data.get('money', 0)}, trait: {db_data.get('trait', 'None')}")
+        
         # ИСПРАВЛЕНИЕ: Если max_energy не установлен или меньше 100, исправляем
         if 'max_energy' not in db_data or db_data['max_energy'] < 100:
             db_data['max_energy'] = 100
@@ -268,6 +272,7 @@ def get_user_data_safe(user_id):
         return db_data
     else:
         # Создаем нового пользователя
+        logger.info(f"Creating new user: {user_id}")
         new_user = {
             'player_name': None,
             'name_set': False,
@@ -322,6 +327,8 @@ def save_user_data_safe(user_id, user_data):
         logger.warning(f"Invalid user_id in save: {user_id}")
         return False
     
+    logger.info(f"Saving user data for: {user_id} - money: {user_data.get('money', 0)}, trait: {user_data.get('trait', 'None')}")
+    
     # Проверяем что деньги не отрицательные
     if user_data.get('money', 0) < 0:
         logger.error(f"Preventing negative money save for user {user_id}: {user_data['money']}")
@@ -339,6 +346,7 @@ def save_user_data_safe(user_id, user_data):
         user_data['credits'] = user_data['credits'][:MAX_CREDITS]
     
     save_user_data(user_id, user_data)
+    logger.info(f"Successfully saved user data for: {user_id}")
     return True
 
 

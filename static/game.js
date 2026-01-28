@@ -1,5 +1,5 @@
 // Игровые данные
-let userId = 'demo_user';
+let userId = localStorage.getItem('userId') || 'demo_user_' + Math.random().toString(36).substr(2, 9);
 let gameData = {};
 
 // Инициализация Telegram WebApp
@@ -11,12 +11,20 @@ try {
         
         const user = tg.initDataUnsafe?.user;
         if (user && user.id) {
-            userId = user.id.toString();
+            userId = 'tg_' + user.id.toString();
+            localStorage.setItem('userId', userId);
         }
     }
 } catch (error) {
     console.log('Telegram WebApp error:', error);
 }
+
+// Сохраняем userId если его еще нет
+if (!localStorage.getItem('userId')) {
+    localStorage.setItem('userId', userId);
+}
+
+console.log('User ID:', userId);
 
 // Загрузка данных пользователя
 async function loadUserData() {
