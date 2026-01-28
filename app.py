@@ -52,9 +52,23 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-# База данных SQLite
-DB_PATH = 'game_data.db'
+# База данных - поддержка PostgreSQL и SQLite
+DATABASE_URL = os.getenv('DATABASE_URL')  # PostgreSQL URL от Render
+if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+    # Render использует postgres://, но psycopg2 требует postgresql://
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+# Если есть PostgreSQL - используем его, иначе SQLite
+USE_POSTGRES = DATABASE_URL is not None
+DB_PATH = os.getenv('DATABASE_PATH', 'game_data.db')  # Для SQLite
 db_lock = Lock()
+
+if USE_POSTGRES:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    logger.info("Using PostgreSQL database")
+else:
+    logger.info("Using SQLite database")
 
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
@@ -117,46 +131,96 @@ def verify_telegram_webapp_data(init_data_raw):
 
 def init_db():
     """Инициализация базы данных"""
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                user_id TEXT PRIMARY KEY,
-                data TEXT NOT NULL,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
+    if USE_POSTGRES:
+        # PostgreSQL
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_last_updated 
+                ON users(last_updated)
+            ''')
+            conn.commit()
+            cursor.close()
+            conn.close()
+            logger.info("PostgreSQL database initialized successfully")
+        except Exception as e:
+            logger.error(f"Error initializing PostgreSQL: {e}")
+            raise
+    else:
+        # SQLite
+        db_dir = os.path.dirname(DB_PATH)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
         
-        # Добавляем индексы для производительности
-        cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_last_updated 
-            ON users(last_updated)
-        ''')
-        
-        conn.commit()
-        logger.info("Database initialized successfully")
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_last_updated 
+                ON users(last_updated)
+            ''')
+            conn.commit()
+            logger.info(f"SQLite database initialized at {DB_PATH}")
 
 def save_user_data(user_id, data):
     """Сохранение данных пользователя в БД"""
     with db_lock:
-        with sqlite3.connect(DB_PATH) as conn:
+        if USE_POSTGRES:
+            conn = psycopg2.connect(DATABASE_URL)
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT OR REPLACE INTO users (user_id, data, last_updated)
-                VALUES (?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO users (user_id, data, last_updated)
+                VALUES (%s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id) DO UPDATE 
+                SET data = EXCLUDED.data, last_updated = CURRENT_TIMESTAMP
             ''', (user_id, json.dumps(data)))
             conn.commit()
+            cursor.close()
+            conn.close()
+        else:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT OR REPLACE INTO users (user_id, data, last_updated)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                ''', (user_id, json.dumps(data)))
+                conn.commit()
 
 def load_user_data(user_id):
     """Загрузка данных пользователя из БД"""
     with db_lock:
-        with sqlite3.connect(DB_PATH) as conn:
+        if USE_POSTGRES:
+            conn = psycopg2.connect(DATABASE_URL)
             cursor = conn.cursor()
-            cursor.execute('SELECT data FROM users WHERE user_id = ?', (user_id,))
+            cursor.execute('SELECT data FROM users WHERE user_id = %s', (user_id,))
             row = cursor.fetchone()
+            cursor.close()
+            conn.close()
             if row:
                 return json.loads(row[0])
             return None
+        else:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT data FROM users WHERE user_id = ?', (user_id,))
+                row = cursor.fetchone()
+                if row:
+                    return json.loads(row[0])
+                return None
 
 # Инициализируем БД при старте
 init_db()
@@ -584,13 +648,20 @@ def health_check():
     """Health check endpoint для мониторинга"""
     try:
         # Проверяем доступность БД
-        with sqlite3.connect(DB_PATH) as conn:
+        if USE_POSTGRES:
+            conn = psycopg2.connect(DATABASE_URL)
             cursor = conn.cursor()
             cursor.execute('SELECT 1')
+            cursor.close()
+            conn.close()
+        else:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT 1')
         
         return jsonify({
             'status': 'healthy',
-            'database': 'connected',
+            'database': 'PostgreSQL' if USE_POSTGRES else 'SQLite',
             'timestamp': time.time()
         }), 200
     except Exception as e:
@@ -692,22 +763,33 @@ def get_leaderboard():
     """Получить таблицу лидеров"""
     try:
         with db_lock:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            
-            # Получаем топ-50 игроков по деньгам
-            cursor.execute('''
-                SELECT user_id, data FROM users
-                ORDER BY last_updated DESC
-                LIMIT 1000
-            ''')
+            if USE_POSTGRES:
+                conn = psycopg2.connect(DATABASE_URL)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT user_id, data FROM users
+                    ORDER BY last_updated DESC
+                    LIMIT 1000
+                ''')
+                rows = cursor.fetchall()
+                cursor.close()
+                conn.close()
+            else:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT user_id, data FROM users
+                    ORDER BY last_updated DESC
+                    LIMIT 1000
+                ''')
+                rows = cursor.fetchall()
+                conn.close()
             
             players = []
-            for row in cursor.fetchall():
+            for row in rows:
                 user_id, data_json = row
                 try:
                     user_data = json.loads(data_json)
-                    # Только игроки с установленным именем
                     if user_data.get('name_set') and user_data.get('player_name'):
                         players.append({
                             'player_name': user_data['player_name'],
@@ -723,12 +805,7 @@ def get_leaderboard():
                     logger.error(f"Error processing user {user_id}: {e}")
                     continue
             
-            conn.close()
-            
-            # Сортируем по деньгам
             players.sort(key=lambda x: x['money'], reverse=True)
-            
-            # Возвращаем топ-50
             return jsonify(players[:50])
             
     except Exception as e:
@@ -744,10 +821,18 @@ def reset_user(user_id):
     
     # Удаляем из БД
     with db_lock:
-        with sqlite3.connect(DB_PATH) as conn:
+        if USE_POSTGRES:
+            conn = psycopg2.connect(DATABASE_URL)
             cursor = conn.cursor()
-            cursor.execute('DELETE FROM users WHERE user_id = ?', (user_id,))
+            cursor.execute('DELETE FROM users WHERE user_id = %s', (user_id,))
             conn.commit()
+            cursor.close()
+            conn.close()
+        else:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM users WHERE user_id = ?', (user_id,))
+                conn.commit()
     
     logger.info(f"User {user_id} data reset")
     return jsonify({"message": "User data reset successfully"})

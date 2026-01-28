@@ -1009,7 +1009,7 @@
             document.getElementById('rouletteModal').style.display = 'flex';
         }
         
-        async function playRoulette(bet) {
+        async function playRoulette(bet, retryCount = 0) {
             try {
                 // Анимация вращения барабанов
                 const slot1 = document.getElementById('slot1');
@@ -1062,9 +1062,18 @@
                     }
                 }, 1400);
             } catch (error) {
-                document.getElementById('rouletteMessage').textContent = 'Ошибка!';
-                document.getElementById('rouletteMessage').style.color = '#e74c3c';
-                showMessage('Ошибка!', false);
+                console.error('Ошибка рулетки:', error);
+                
+                // Повторная попытка
+                if (retryCount < 2) {
+                    document.getElementById('rouletteMessage').textContent = `🔄 Переподключение... ${retryCount + 1}/2`;
+                    document.getElementById('rouletteMessage').style.color = '#f39c12';
+                    setTimeout(() => playRoulette(bet, retryCount + 1), 2000);
+                } else {
+                    document.getElementById('rouletteMessage').textContent = '❌ Ошибка соединения!';
+                    document.getElementById('rouletteMessage').style.color = '#e74c3c';
+                    showMessage('❌ Ошибка соединения! Обновите страницу (F5)', false);
+                }
             }
         }
         
