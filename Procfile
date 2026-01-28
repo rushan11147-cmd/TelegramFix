@@ -1,1 +1,1 @@
-web: gunicorn app:app
+web: RUN_BOT=true gunicorn app:app

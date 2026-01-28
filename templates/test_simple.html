@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Тест Flask</title>
+</head>
+<body>
+    <h1>Тест Flask API</h1>
+    <button onclick="testAPI()">Тест API</button>
+    <pre id="result"></pre>
+    
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Загрузка...';
+            
+            try {
+                // Тест 1: GET запрос
+                console.log('Тест 1: GET /api/user/test_user');
+                const response1 = await fetch('/api/user/test_user');
+                console.log('Status:', response1.status);
+                console.log('Headers:', [...response1.headers.entries()]);
+                
+                if (response1.ok) {
+                    const data1 = await response1.json();
+                    resultDiv.textContent = 'GET запрос работает!\n' + JSON.stringify(data1, null, 2);
+                } else {
+                    const text = await response1.text();
+                    resultDiv.textContent = 'GET запрос ошибка ' + response1.status + ':\n' + text;
+                }
+                
+                // Тест 2: POST запрос
+                console.log('\nТест 2: POST /api/set_name');
+                const response2 = await fetch('/api/set_name', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: 'test_user',
+                        player_name: 'Тестер'
+                    })
+                });
+                
+                console.log('Status:', response2.status);
+                
+                if (response2.ok) {
+                    const data2 = await response2.json();
+                    resultDiv.textContent += '\n\nPOST запрос работает!\n' + JSON.stringify(data2, null, 2);
+                } else {
+                    const text = await response2.text();
+                    resultDiv.textContent += '\n\nPOST запрос ошибка ' + response2.status + ':\n' + text;
+                }
+                
+            } catch (error) {
+                resultDiv.textContent = 'Ошибка: ' + error.message;
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -35,9 +35,19 @@ CORS(app, origins=[
 ])
 
 # Rate Limiting
+def get_rate_limit_key():
+    """Безопасное получение ключа для rate limiting"""
+    try:
+        data = request.get_json(silent=True)
+        if data and 'user_id' in data:
+            return data['user_id']
+    except:
+        pass
+    return get_remote_address()
+
 limiter = Limiter(
     app=app,
-    key_func=lambda: request.json.get('user_id', get_remote_address()) if request.json else get_remote_address(),
+    key_func=get_rate_limit_key,
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://"
 )
@@ -610,6 +620,18 @@ def full():
 def design():
     return render_template('game_design.html')
 
+@app.route('/test')
+def test():
+    return render_template('test.html')
+
+@app.route('/test_simple')
+def test_simple():
+    return render_template('test_simple.html')
+
+@app.route('/hello')
+def hello():
+    return render_template('hello.html')
+
 @app.route('/api/user/<user_id>')
 def get_user(user_id):
     """Получить данные пользователя"""
@@ -624,7 +646,9 @@ def get_user(user_id):
 @limiter.limit("5 per minute")
 def set_player_name():
     """Установить имя игрока"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     player_name = data.get('player_name', '').strip()
     
@@ -650,7 +674,9 @@ def set_player_name():
 @app.route('/api/complete_tutorial', methods=['POST'])
 def complete_tutorial():
     """Отметить гайд как пройденный"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
     if user_id not in users_data:
@@ -759,7 +785,9 @@ def get_goals():
 @app.route('/api/check_goals', methods=['POST'])
 def check_goals():
     """Проверить и выполнить цели пользователя"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
     if user_id not in users_data:
@@ -779,7 +807,9 @@ def check_goals():
 @app.route('/api/change_job', methods=['POST'])
 def change_job():
     """Сменить текущую работу"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     job_id = data.get('job_id')
     
@@ -808,7 +838,9 @@ def change_job():
 @app.route('/api/buy_booster', methods=['POST'])
 def buy_booster():
     """Купить бустер"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     booster_id = data.get('booster_id')
     
@@ -962,7 +994,9 @@ def check_and_complete_goals(user):
 @app.route('/api/buy_car', methods=['POST'])
 def buy_car():
     """Купить машину"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     car_id = data.get('car_id')
     payment_type = data.get('payment_type', 'cash')  # cash, credit
@@ -1074,7 +1108,9 @@ def buy_car():
 @app.route('/api/buy_real_estate', methods=['POST'])
 def buy_real_estate():
     """Купить недвижимость"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     property_id = data.get('property_id')
     payment_type = data.get('payment_type', 'cash')
@@ -1189,7 +1225,9 @@ def get_traits():
 @app.route('/api/select_trait', methods=['POST'])
 def select_trait():
     """Выбрать черту личности"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     trait_id = data.get('trait_id')
     
@@ -1217,7 +1255,9 @@ def select_trait():
 @app.route('/api/buy_food', methods=['POST'])
 def buy_food():
     """Купить еду - восстанавливает настроение и здоровье"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
     if user_id not in users_data:
@@ -1244,7 +1284,9 @@ def buy_food():
 @app.route('/api/take_rest', methods=['POST'])
 def take_rest():
     """Отдохнуть - восстанавливает энергию, настроение и здоровье"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
     if user_id not in users_data:
@@ -1273,7 +1315,9 @@ def take_rest():
 @app.route('/api/random_event', methods=['POST'])
 def random_event():
     """Случайное событие в течение дня"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
     if user_id not in users_data:
@@ -1318,7 +1362,9 @@ def random_event():
 @app.route('/api/play_roulette', methods=['POST'])
 def play_roulette():
     """Сыграть в рулетку"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     bet = data.get('bet', 100)
     
@@ -1377,7 +1423,9 @@ def play_roulette():
 @app.route('/api/upgrade_skill', methods=['POST'])
 def upgrade_skill():
     """Прокачать навык"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     skill = data.get('skill')
     
@@ -1422,7 +1470,9 @@ def upgrade_skill():
 @limiter.limit("30 per minute")  # Макс 30 работ в минуту
 def work():
     """Обработка нажатия кнопки РАБОТАТЬ"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
     if user_id not in users_data:
@@ -1591,7 +1641,9 @@ def work():
 @app.route('/api/next_day', methods=['POST'])
 def next_day():
     """Переход к следующему дню"""
-    data = request.json
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
     if user_id not in users_data:
@@ -1782,19 +1834,29 @@ def run_bot():
         application = Application.builder().token(BOT_TOKEN).build()
         application.add_handler(CommandHandler("start", start))
         
+        # Добавляем обработчик ошибок
+        async def error_handler(update, context):
+            logger.error(f"Update {update} caused error {context.error}")
+        
+        application.add_error_handler(error_handler)
+        
         logger.info("🤖 Telegram бот запущен!")
         logger.info(f"🌐 Web App URL: {WEBAPP_URL}")
         
-        application.run_polling()
+        application.run_polling(drop_pending_updates=True)  # Игнорируем старые обновления
     except Exception as e:
         logger.error(f"❌ Ошибка запуска бота: {e}")
 
-# Запускаем бота при импорте модуля (для gunicorn)
-bot_thread = Thread(target=run_bot, daemon=False)  # daemon=False чтобы не умирал
-bot_thread.start()
-logger.info("Bot thread started")
+# Запускаем бота только если явно установлена переменная RUN_BOT=true
+if os.getenv('RUN_BOT', 'false').lower() == 'true':
+    bot_thread = Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    logger.info("Bot thread started")
 
 if __name__ == '__main__':
-    # Для локальной разработки
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    # Для локальной разработки - только Flask без бота
+    logger.info("🚀 Запуск в режиме разработки (только Flask, без Telegram бота)")
+    logger.info("💡 Чтобы запустить бота, установите переменную окружения: RUN_BOT=true")
+    port = int(os.environ.get('PORT', 8080))  # Изменили порт на 8080
+    logger.info(f"🌐 Запуск на порту {port}")
+    app.run(debug=False, host='0.0.0.0', port=port, use_reloader=False)
