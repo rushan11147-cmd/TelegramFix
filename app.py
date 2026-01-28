@@ -1974,6 +1974,11 @@ def run_bot():
         return
     
     try:
+        # Создаем новый event loop для этого потока
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         application = Application.builder().token(BOT_TOKEN).build()
         application.add_handler(CommandHandler("start", start))
         
@@ -1989,6 +1994,8 @@ def run_bot():
         application.run_polling(drop_pending_updates=True)  # Игнорируем старые обновления
     except Exception as e:
         logger.error(f"❌ Ошибка запуска бота: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 # Запускаем бота только если явно установлена переменная RUN_BOT=true
 if os.getenv('RUN_BOT', 'false').lower() == 'true':
