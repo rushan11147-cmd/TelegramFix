@@ -71,6 +71,7 @@ else:
     logger.info("Using SQLite database")
 
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://telegramfix.onrender.com')
 
 def verify_telegram_webapp_data(init_data_raw):
     """
@@ -1945,8 +1946,7 @@ def next_day():
 # TELEGRAM BOT WEBHOOK
 # ============================================
 
-BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://telegramfix.onrender.com')
+# BOT_TOKEN и WEBAPP_URL объявлены в начале файла (строка 73-74)
 
 @app.route(f'/bot_webhook', methods=['POST'])
 def telegram_webhook():
@@ -2021,21 +2021,14 @@ def set_webhook():
         return jsonify({"error": str(e)}), 500
 
 # ============================================
-# TELEGRAM BOT (запускается в отдельном потоке)
+# TELEGRAM BOT (старый код - не используется)
 # ============================================
 
-BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-WEBAPP_URL = os.getenv('WEBAPP_URL', 'http://localhost:5000')
+# BOT_TOKEN и WEBAPP_URL объявлены в начале файла
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик команды /start"""
-    keyboard = [
-        [InlineKeyboardButton(
-            "🎮 Играть в 'Выживи до зарплаты'", 
-            web_app=WebAppInfo(url=WEBAPP_URL)
-        )]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    """Обработчик команды /start (не используется с webhook)"""
+    pass
     
     await update.message.reply_text(
         "🎯 Добро пожаловать в игру 'Выживи до зарплаты'!\n\n"
