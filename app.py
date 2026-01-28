@@ -1942,6 +1942,85 @@ def next_day():
         })
 
 # ============================================
+# TELEGRAM BOT WEBHOOK
+# ============================================
+
+BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://telegramfix.onrender.com')
+
+@app.route(f'/bot_webhook', methods=['POST'])
+def telegram_webhook():
+    """Обработка webhook от Telegram"""
+    if not BOT_TOKEN:
+        return jsonify({"error": "Bot token not set"}), 400
+    
+    try:
+        import requests as req
+        data = request.get_json()
+        
+        # Проверяем что это команда /start
+        if 'message' in data:
+            message = data['message']
+            chat_id = message['chat']['id']
+            text = message.get('text', '')
+            
+            if text == '/start':
+                # Отправляем ответ с кнопкой
+                keyboard = {
+                    "inline_keyboard": [[
+                        {
+                            "text": "🎮 Играть в 'Выживи до зарплаты'",
+                            "web_app": {"url": WEBAPP_URL}
+                        }
+                    ]]
+                }
+                
+                response = req.post(
+                    f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
+                    json={
+                        'chat_id': chat_id,
+                        'text': (
+                            "🎯 Добро пожаловать в игру 'Выживи до зарплаты'!\n\n"
+                            "💼 Твоя задача - дожить до зарплаты, работая и избегая лишних трат.\n"
+                            "⚡ Работай, чтобы заработать деньги, но следи за энергией!\n"
+                            "📅 Каждый день приносит новые вызовы и случайные события.\n\n"
+                            "Нажми кнопку ниже, чтобы начать игру:"
+                        ),
+                        'reply_markup': keyboard
+                    }
+                )
+                
+                logger.info(f"Sent /start response to chat {chat_id}")
+        
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/set_webhook', methods=['GET'])
+def set_webhook():
+    """Установка webhook для бота"""
+    if not BOT_TOKEN:
+        return jsonify({"error": "Bot token not set"}), 400
+    
+    try:
+        import requests as req
+        webhook_url = f"{WEBAPP_URL}/bot_webhook"
+        
+        response = req.post(
+            f'https://api.telegram.org/bot{BOT_TOKEN}/setWebhook',
+            json={'url': webhook_url}
+        )
+        
+        result = response.json()
+        logger.info(f"Webhook set result: {result}")
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Set webhook error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ============================================
 # TELEGRAM BOT (запускается в отдельном потоке)
 # ============================================
 
@@ -1998,10 +2077,14 @@ def run_bot():
         logger.error(traceback.format_exc())
 
 # Запускаем бота только если явно установлена переменная RUN_BOT=true
+# ВАЖНО: Бот не может работать с polling в отдельном потоке на Render
+# Используйте прямую ссылку: https://telegramfix.onrender.com
 if os.getenv('RUN_BOT', 'false').lower() == 'true':
-    bot_thread = Thread(target=run_bot, daemon=True)
-    bot_thread.start()
-    logger.info("Bot thread started")
+    logger.warning("⚠️ RUN_BOT=true, но бот не может работать с polling в отдельном потоке")
+    logger.info("💡 Используйте прямую ссылку для игры: https://telegramfix.onrender.com")
+    # bot_thread = Thread(target=run_bot, daemon=True)
+    # bot_thread.start()
+    # logger.info("Bot thread started")
 
 if __name__ == '__main__':
     # Для локальной разработки - только Flask без бота
