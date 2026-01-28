@@ -1333,25 +1333,25 @@ def play_roulette():
     # Вычитаем ставку
     user['money'] -= bet
     
-    # Крутим рулетку
+    # Крутим рулетку (шансы как в казино - больше проигрышей)
     rand = random.random()
-    if rand < 0.4:  # 40% шанс - проигрыш
+    if rand < 0.60:  # 60% шанс - проигрыш
         multiplier = 0
         result_emoji = '😭'
         message = f'Проиграл! -{bet}₽'
-    elif rand < 0.7:  # 30% шанс - x2
+    elif rand < 0.85:  # 25% шанс - x2
         multiplier = 2
         result_emoji = '🙂'
         win = bet * multiplier
         user['money'] += win
         message = f'Выиграл x2! +{win}₽'
-    elif rand < 0.9:  # 20% шанс - x5
+    elif rand < 0.95:  # 10% шанс - x5
         multiplier = 5
         result_emoji = '😄'
         win = bet * multiplier
         user['money'] += win
         message = f'Выиграл x5! +{win}₽'
-    else:  # 10% шанс - x10
+    else:  # 5% шанс - x10
         multiplier = 10
         result_emoji = '🤑'
         win = bet * multiplier

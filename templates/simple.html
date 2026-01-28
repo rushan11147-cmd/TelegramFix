@@ -635,15 +635,33 @@
                 <button class="close-btn" onclick="document.getElementById('rouletteModal').style.display='none'">×</button>
             </div>
             <div class="modal-body" style="text-align: center;">
-                <div style="font-size: 80px; margin: 20px 0;" id="rouletteResult">🎰</div>
-                <div style="font-size: 18px; margin: 15px 0; color: #555;">Поставь деньги и крути!</div>
+                <!-- Барабан рулетки -->
+                <div style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border-radius: 20px; padding: 30px 20px; margin: 20px 0; border: 4px solid #f39c12; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                    <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px;">
+                        <!-- Барабан 1 -->
+                        <div style="background: white; border-radius: 15px; padding: 20px 15px; min-width: 80px; border: 3px solid #34495e; box-shadow: inset 0 4px 8px rgba(0,0,0,0.2);">
+                            <div id="slot1" style="font-size: 50px; transition: all 0.1s;">🎰</div>
+                        </div>
+                        <!-- Барабан 2 -->
+                        <div style="background: white; border-radius: 15px; padding: 20px 15px; min-width: 80px; border: 3px solid #34495e; box-shadow: inset 0 4px 8px rgba(0,0,0,0.2);">
+                            <div id="slot2" style="font-size: 50px; transition: all 0.1s;">🎰</div>
+                        </div>
+                        <!-- Барабан 3 -->
+                        <div style="background: white; border-radius: 15px; padding: 20px 15px; min-width: 80px; border: 3px solid #34495e; box-shadow: inset 0 4px 8px rgba(0,0,0,0.2);">
+                            <div id="slot3" style="font-size: 50px; transition: all 0.1s;">🎰</div>
+                        </div>
+                    </div>
+                    <div id="rouletteMessage" style="font-size: 20px; font-weight: bold; color: #f39c12; min-height: 30px;"></div>
+                </div>
+                
+                <div style="font-size: 18px; margin: 15px 0; color: #555;">Выбери ставку:</div>
                 <div style="display: flex; gap: 10px; justify-content: center; margin: 20px 0;">
-                    <button class="nav-btn" style="padding: 15px 20px;" onclick="playRoulette(100)">100₽</button>
-                    <button class="nav-btn" style="padding: 15px 20px;" onclick="playRoulette(500)">500₽</button>
-                    <button class="nav-btn" style="padding: 15px 20px;" onclick="playRoulette(1000)">1000₽</button>
+                    <button class="nav-btn" style="padding: 15px 20px; background: linear-gradient(135deg, #27ae60 0%, #229954 100%); border-color: #1e8449;" onclick="playRoulette(100)">💰 100₽</button>
+                    <button class="nav-btn" style="padding: 15px 20px; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); border-color: #21618c;" onclick="playRoulette(500)">💎 500₽</button>
+                    <button class="nav-btn" style="padding: 15px 20px; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); border-color: #a93226;" onclick="playRoulette(1000)">👑 1000₽</button>
                 </div>
                 <div style="font-size: 14px; color: #888; margin-top: 10px;">
-                    Шансы: 40% x0 | 30% x2 | 20% x5 | 10% x10
+                    Шансы: 60% 😭 | 25% 🙂 | 10% 😄 | 5% 🤑
                 </div>
             </div>
         </div>
@@ -993,15 +1011,26 @@
         
         async function playRoulette(bet) {
             try {
-                // Анимация вращения
-                const resultEl = document.getElementById('rouletteResult');
-                const emojis = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣'];
+                // Анимация вращения барабанов
+                const slot1 = document.getElementById('slot1');
+                const slot2 = document.getElementById('slot2');
+                const slot3 = document.getElementById('slot3');
+                const messageEl = document.getElementById('rouletteMessage');
+                
+                const emojis = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣', '⭐', '🔔'];
                 let count = 0;
+                
+                messageEl.textContent = '🎰 Крутим...';
+                messageEl.style.color = '#f39c12';
+                
+                // Анимация барабанов
                 const interval = setInterval(function() {
-                    resultEl.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    slot1.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    slot2.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    slot3.textContent = emojis[Math.floor(Math.random() * emojis.length)];
                     count++;
-                    if (count > 10) clearInterval(interval);
-                }, 100);
+                    if (count > 15) clearInterval(interval);
+                }, 80);
                 
                 const response = await fetch('/api/play_roulette', {
                     method: 'POST',
@@ -1014,14 +1043,27 @@
                         const result = await response.json();
                         gameData = result.user;
                         updateUI();
-                        resultEl.textContent = result.result_emoji;
+                        
+                        // Показываем результат
+                        const resultEmoji = result.result_emoji;
+                        slot1.textContent = resultEmoji;
+                        slot2.textContent = resultEmoji;
+                        slot3.textContent = resultEmoji;
+                        
+                        messageEl.textContent = result.message;
+                        messageEl.style.color = result.multiplier > 0 ? '#27ae60' : '#e74c3c';
+                        
                         showMessage(result.message, result.multiplier > 0);
                     } else {
                         const error = await response.json();
+                        messageEl.textContent = error.error || 'Ошибка!';
+                        messageEl.style.color = '#e74c3c';
                         showMessage(error.error || 'Ошибка!', false);
                     }
-                }, 1200);
+                }, 1400);
             } catch (error) {
+                document.getElementById('rouletteMessage').textContent = 'Ошибка!';
+                document.getElementById('rouletteMessage').style.color = '#e74c3c';
                 showMessage('Ошибка!', false);
             }
         }
