@@ -152,79 +152,72 @@ def load_user_data(user_id):
 init_db()
 
 # Кэш пользователей с thread-safe доступом
-users_data_cache = {}
+users_data = {}  # Оставляем старое имя для совместимости
 cache_lock = Lock()
 
-def get_user_data(user_id):
-    """Получить данные пользователя (с кэшем и синхронизацией)"""
+def get_user_data_safe(user_id):
+    """Получить данные пользователя (thread-safe)"""
     with cache_lock:
-        # Проверяем кэш
-        if user_id in users_data_cache:
-            return users_data_cache[user_id].copy()  # Возвращаем копию
+        if user_id not in users_data:
+            # Загружаем из БД
+            db_data = load_user_data(user_id)
+            if db_data:
+                users_data[user_id] = db_data
+            else:
+                # Создаем нового пользователя
+                users_data[user_id] = {
+                    'player_name': None,
+                    'name_set': False,
+                    'tutorial_completed': False,
+                    'money': 500,
+                    'day': 1,
+                    'max_days': 30,
+                    'month': 1,
+                    'energy': 100,
+                    'max_energy': 100,
+                    'money_per_work': 50,
+                    'last_event': None,
+                    'last_event_time': 0,
+                    'salary': 25000,
+                    'trait': None,
+                    'trait_selected': False,
+                    'current_job': 'delivery',
+                    'unlocked_jobs': ['delivery'],
+                    'boosters': {},
+                    'owned_items': [],
+                    'cars': [],
+                    'real_estate': [],
+                    'credits': [],
+                    'monthly_income': 0,
+                    'monthly_expenses': 0,
+                    'completed_goals': [],
+                    'total_goals_completed': 0,
+                    'worked_today': False,
+                    'mood': 50,
+                    'total_earned': 0,
+                    'total_spent': 0,
+                    'work_count': 0,
+                    'health': 100,
+                    'skills': {
+                        'speed': 1,
+                        'luck': 1,
+                        'charisma': 1,
+                        'intelligence': 1
+                    },
+                    'skill_points': 0,
+                    'rest_count': 0,
+                    'had_credits': False
+                }
+                save_user_data(user_id, users_data[user_id])
+                logger.info(f"Created new user: {user_id}")
         
-        # Загружаем из БД
-        user_data = load_user_data(user_id)
-        
-        if not user_data:
-            # Создаем нового пользователя
-            user_data = {
-                'player_name': None,
-                'name_set': False,
-                'tutorial_completed': False,
-                'money': 500,
-                'day': 1,
-                'max_days': 30,
-                'month': 1,
-                'energy': 100,
-                'max_energy': 100,
-                'money_per_work': 50,
-                'last_event': None,
-                'last_event_time': 0,
-                'salary': 25000,
-                'trait': None,
-                'trait_selected': False,
-                'current_job': 'delivery',
-                'unlocked_jobs': ['delivery'],
-                'boosters': {},
-                'owned_items': [],
-                'cars': [],
-                'real_estate': [],
-                'credits': [],
-                'monthly_income': 0,
-                'monthly_expenses': 0,
-                'completed_goals': [],
-                'total_goals_completed': 0,
-                'worked_today': False,
-                'mood': 50,
-                'total_earned': 0,
-                'total_spent': 0,
-                'work_count': 0,
-                'health': 100,
-                'skills': {
-                    'speed': 1,
-                    'luck': 1,
-                    'charisma': 1,
-                    'intelligence': 1
-                },
-                'skill_points': 0,
-                'rest_count': 0,
-                'had_credits': False
-            }
-            save_user_data(user_id, user_data)
-            logger.info(f"Created new user: {user_id}")
-        
-        # Кэшируем
-        users_data_cache[user_id] = user_data.copy()
-        return user_data.copy()
+        return users_data[user_id]
 
-def update_user_data(user_id, user_data):
-    """Обновить данные пользователя (с кэшем и синхронизацией)"""
+def save_user_data_safe(user_id):
+    """Сохранить данные пользователя (thread-safe)"""
     with cache_lock:
-        # Обновляем кэш
-        users_data_cache[user_id] = user_data.copy()
-        # Сохраняем в БД
-        save_user_data(user_id, user_data)
-    return user_data
+        if user_id in users_data:
+            save_user_data(user_id, users_data[user_id])
 
 
 # События игры
@@ -621,7 +614,7 @@ def design():
 def get_user(user_id):
     """Получить данные пользователя"""
     try:
-        user_data = get_user_data(user_id)
+        user_data = get_user_data_safe(user_id)
         return jsonify(user_data)
     except Exception as e:
         logger.error(f"Error getting user {user_id}: {e}")
@@ -720,8 +713,8 @@ def get_leaderboard():
 def reset_user(user_id):
     """Сбросить данные пользователя (начать заново)"""
     with cache_lock:
-        if user_id in users_data_cache:
-            del users_data_cache[user_id]
+        if user_id in users_data:
+            del users_data[user_id]
     
     # Удаляем из БД
     with db_lock:
