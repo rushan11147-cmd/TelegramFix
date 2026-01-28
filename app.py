@@ -237,6 +237,12 @@ def get_user_data_safe(user_id):
             db_data = load_user_data(user_id)
             if db_data:
                 users_data[user_id] = db_data
+                
+                # ИСПРАВЛЕНИЕ: Если max_energy не установлен или меньше 100, исправляем
+                if 'max_energy' not in users_data[user_id] or users_data[user_id]['max_energy'] < 100:
+                    users_data[user_id]['max_energy'] = 100
+                    logger.info(f"Fixed max_energy for user {user_id}")
+                    save_user_data(user_id, users_data[user_id])
             else:
                 # Создаем нового пользователя
                 users_data[user_id] = {
