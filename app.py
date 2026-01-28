@@ -1782,25 +1782,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def run_bot():
     """Запуск бота в отдельном потоке"""
     if not BOT_TOKEN or BOT_TOKEN == 'your_bot_token_here':
-        print("⚠️ TELEGRAM_BOT_TOKEN не установлен - бот не запущен")
+        logger.warning("TELEGRAM_BOT_TOKEN не установлен - бот не запущен")
         return
     
     try:
         application = Application.builder().token(BOT_TOKEN).build()
         application.add_handler(CommandHandler("start", start))
         
-        print("🤖 Telegram бот запущен!")
-        print(f"🌐 Web App URL: {WEBAPP_URL}")
+        logger.info("🤖 Telegram бот запущен!")
+        logger.info(f"🌐 Web App URL: {WEBAPP_URL}")
         
         application.run_polling()
     except Exception as e:
-        print(f"❌ Ошибка запуска бота: {e}")
+        logger.error(f"❌ Ошибка запуска бота: {e}")
+
+# Запускаем бота при импорте модуля (для gunicorn)
+bot_thread = Thread(target=run_bot, daemon=False)  # daemon=False чтобы не умирал
+bot_thread.start()
+logger.info("Bot thread started")
 
 if __name__ == '__main__':
-    # Запускаем бота в отдельном потоке
-    bot_thread = Thread(target=run_bot, daemon=True)
-    bot_thread.start()
-    
-    # Запускаем Flask приложение
+    # Для локальной разработки
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)

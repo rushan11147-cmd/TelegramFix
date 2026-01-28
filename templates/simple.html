@@ -792,14 +792,22 @@
                 if (user && user.id) {
                     userId = 'tg_' + user.id.toString();
                     console.log('✅ Telegram User ID:', userId);
+                    console.log('✅ User data:', user);
                 } else {
-                    console.warn('⚠️ Не удалось получить Telegram ID, используется demo_user');
+                    console.warn('⚠️ Не удалось получить Telegram ID');
+                    console.warn('⚠️ initDataUnsafe:', tg.initDataUnsafe);
+                    // Генерируем уникальный ID для браузера
+                    userId = 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 }
             } else {
-                console.warn('⚠️ Telegram WebApp не доступен, используется demo_user');
+                console.warn('⚠️ Telegram WebApp не доступен');
+                // Генерируем уникальный ID для браузера
+                userId = 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             }
         } catch (error) {
             console.error('❌ Ошибка получения Telegram ID:', error);
+            // Генерируем уникальный ID для браузера
+            userId = 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         }
         
         console.log('🎮 Игра запущена для пользователя:', userId);
