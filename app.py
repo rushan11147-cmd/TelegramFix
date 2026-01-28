@@ -450,6 +450,7 @@ def get_user(user_id):
                 'money': 500,  # Стартовые деньги
                 'day': 1,      # Текущий день
                 'max_days': 30, # До зарплаты
+                'month': 1,    # Текущий месяц (уровень)
                 'energy': 100,
                 'max_energy': 100,
                 'money_per_work': 50,  # За одно нажатие "работать"
@@ -1416,6 +1417,12 @@ def next_day():
         # Получаем зарплату!
         user['money'] += user['salary']
         user['day'] = 1
+        
+        # Увеличиваем месяц (уровень) вместо сброса игры
+        if 'month' not in user:
+            user['month'] = 1
+        user['month'] += 1
+        
         user['energy'] = user['max_energy']
         user['health'] = min(100, user.get('health', 100) + 30)  # Восстанавливаем здоровье
         
@@ -1428,7 +1435,7 @@ def next_day():
         return jsonify({
             'user': user,
             'salary_received': True,
-            'message': f"Поздравляем! Получена зарплата {user['salary']}₽",
+            'message': f"🎉 Месяц {user['month']-1} завершен! Получена зарплата {user['salary']}₽",
             'new_jobs': new_jobs,
             'newly_completed_goals': newly_completed_goals
         })

@@ -416,7 +416,7 @@
 <body>
     <div class="container">
         <div class="top-bar">
-            <div>День <span id="day">1</span> / 30</div>
+            <div>Месяц <span id="month">1</span> | День <span id="day">1</span> / 30</div>
             <div>💰 <span id="topMoney">500</span>₽</div>
             <button class="close-btn" style="border: none; background: rgba(255,255,255,0.2);" onclick="showStats()"><i class="fas fa-chart-bar"></i></button>
         </div>
@@ -685,17 +685,29 @@
         let userId = 'demo_user';
         let gameData = {};
         
+        // Получаем ID пользователя из Telegram
         try {
             if (window.Telegram && window.Telegram.WebApp) {
                 const tg = window.Telegram.WebApp;
                 tg.ready();
                 tg.expand();
+                
+                // Пробуем получить ID пользователя
                 const user = tg.initDataUnsafe?.user;
-                if (user && user.id) userId = user.id.toString();
+                if (user && user.id) {
+                    userId = 'tg_' + user.id.toString();
+                    console.log('✅ Telegram User ID:', userId);
+                } else {
+                    console.warn('⚠️ Не удалось получить Telegram ID, используется demo_user');
+                }
+            } else {
+                console.warn('⚠️ Telegram WebApp не доступен, используется demo_user');
             }
         } catch (error) {
-            console.log('Telegram error:', error);
+            console.error('❌ Ошибка получения Telegram ID:', error);
         }
+        
+        console.log('🎮 Игра запущена для пользователя:', userId);
         
         async function loadUserData() {
             try {
@@ -939,6 +951,7 @@
         
         function updateUI() {
             document.getElementById('day').textContent = gameData.day || 1;
+            document.getElementById('month').textContent = gameData.month || 1;
             document.getElementById('money').textContent = gameData.money || 500;
             document.getElementById('topMoney').textContent = gameData.money || 500;
             document.getElementById('energyDisplay').textContent = (gameData.energy || 100) + '/100';
