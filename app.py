@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import os
 from dotenv import load_dotenv
 import json
@@ -9,15 +11,99 @@ import sqlite3
 from threading import Lock, Thread
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, ContextTypes
+import hmac
+import hashlib
+import urllib.parse
+import logging
 
 load_dotenv()
 
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
-CORS(app)
+
+# CORS - только для Telegram
+CORS(app, origins=[
+    "https://telegramfix.onrender.com",
+    "https://telegram.org",
+    "http://localhost:5000"  # Для разработки
+])
+
+# Rate Limiting
+limiter = Limiter(
+    app=app,
+    key_func=lambda: request.json.get('user_id', get_remote_address()) if request.json else get_remote_address(),
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 # База данных SQLite
 DB_PATH = 'game_data.db'
 db_lock = Lock()
+
+BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+
+def verify_telegram_webapp_data(init_data_raw):
+    """
+    Проверка подлинности данных от Telegram WebApp
+    Документация: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+    """
+    try:
+        # В режиме разработки (demo_user) пропускаем проверку
+        if not init_data_raw or init_data_raw == 'demo':
+            logger.warning("Skipping validation for demo user")
+            return True
+        
+        if not BOT_TOKEN:
+            logger.error("BOT_TOKEN not set")
+            return False
+        
+        # Парсим init_data
+        parsed_data = urllib.parse.parse_qs(init_data_raw)
+        
+        # Извлекаем hash
+        received_hash = parsed_data.get('hash', [None])[0]
+        if not received_hash:
+            logger.warning("No hash in init_data")
+            return False
+        
+        # Создаем data_check_string (все параметры кроме hash, отсортированные)
+        data_check_arr = []
+        for key, value in sorted(parsed_data.items()):
+            if key != 'hash':
+                data_check_arr.append(f"{key}={value[0]}")
+        data_check_string = '\n'.join(data_check_arr)
+        
+        # Вычисляем secret_key
+        secret_key = hmac.new(
+            "WebAppData".encode(),
+            BOT_TOKEN.encode(),
+            hashlib.sha256
+        ).digest()
+        
+        # Вычисляем hash
+        calculated_hash = hmac.new(
+            secret_key,
+            data_check_string.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        # Сравниваем
+        is_valid = calculated_hash == received_hash
+        
+        if not is_valid:
+            logger.warning(f"Invalid hash: expected {calculated_hash}, got {received_hash}")
+        
+        return is_valid
+        
+    except Exception as e:
+        logger.error(f"Error validating Telegram data: {e}")
+        return False
 
 def init_db():
     """Инициализация базы данных"""
@@ -30,7 +116,15 @@ def init_db():
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        # Добавляем индексы для производительности
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_last_updated 
+            ON users(last_updated)
+        ''')
+        
         conn.commit()
+        logger.info("Database initialized successfully")
 
 def save_user_data(user_id, data):
     """Сохранение данных пользователя в БД"""
@@ -57,14 +151,81 @@ def load_user_data(user_id):
 # Инициализируем БД при старте
 init_db()
 
-# Простое хранилище данных пользователей (кэш в памяти)
-users_data = {}
+# Кэш пользователей с thread-safe доступом
+users_data_cache = {}
+cache_lock = Lock()
 
-def save_and_return(user_id, response_data):
-    """Сохранить данные пользователя в БД и вернуть ответ"""
-    if user_id in users_data:
-        save_user_data(user_id, users_data[user_id])
-    return jsonify(response_data)
+def get_user_data(user_id):
+    """Получить данные пользователя (с кэшем и синхронизацией)"""
+    with cache_lock:
+        # Проверяем кэш
+        if user_id in users_data_cache:
+            return users_data_cache[user_id].copy()  # Возвращаем копию
+        
+        # Загружаем из БД
+        user_data = load_user_data(user_id)
+        
+        if not user_data:
+            # Создаем нового пользователя
+            user_data = {
+                'player_name': None,
+                'name_set': False,
+                'tutorial_completed': False,
+                'money': 500,
+                'day': 1,
+                'max_days': 30,
+                'month': 1,
+                'energy': 100,
+                'max_energy': 100,
+                'money_per_work': 50,
+                'last_event': None,
+                'last_event_time': 0,
+                'salary': 25000,
+                'trait': None,
+                'trait_selected': False,
+                'current_job': 'delivery',
+                'unlocked_jobs': ['delivery'],
+                'boosters': {},
+                'owned_items': [],
+                'cars': [],
+                'real_estate': [],
+                'credits': [],
+                'monthly_income': 0,
+                'monthly_expenses': 0,
+                'completed_goals': [],
+                'total_goals_completed': 0,
+                'worked_today': False,
+                'mood': 50,
+                'total_earned': 0,
+                'total_spent': 0,
+                'work_count': 0,
+                'health': 100,
+                'skills': {
+                    'speed': 1,
+                    'luck': 1,
+                    'charisma': 1,
+                    'intelligence': 1
+                },
+                'skill_points': 0,
+                'rest_count': 0,
+                'had_credits': False
+            }
+            save_user_data(user_id, user_data)
+            logger.info(f"Created new user: {user_id}")
+        
+        # Кэшируем
+        users_data_cache[user_id] = user_data.copy()
+        return user_data.copy()
+
+def update_user_data(user_id, user_data):
+    """Обновить данные пользователя (с кэшем и синхронизацией)"""
+    with cache_lock:
+        # Обновляем кэш
+        users_data_cache[user_id] = user_data.copy()
+        # Сохраняем в БД
+        save_user_data(user_id, user_data)
+    return user_data
+
 
 # События игры
 EVENTS = [
@@ -415,6 +576,27 @@ CREDIT_TYPES = {
 def static_files(filename):
     return send_from_directory('static', filename)
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint для мониторинга"""
+    try:
+        # Проверяем доступность БД
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT 1')
+        
+        return jsonify({
+            'status': 'healthy',
+            'database': 'connected',
+            'timestamp': time.time()
+        }), 200
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 500
+
 @app.route('/')
 def index():
     return render_template('simple.html')
@@ -438,63 +620,15 @@ def design():
 @app.route('/api/user/<user_id>')
 def get_user(user_id):
     """Получить данные пользователя"""
-    # Сначала проверяем кэш в памяти
-    if user_id not in users_data:
-        # Пытаемся загрузить из БД
-        db_data = load_user_data(user_id)
-        if db_data:
-            users_data[user_id] = db_data
-        else:
-            # Создаем нового пользователя
-            users_data[user_id] = {
-                'player_name': None,  # Имя игрока
-                'name_set': False,    # Установлено ли имя
-                'tutorial_completed': False,  # Пройден ли гайд
-                'money': 500,  # Стартовые деньги
-                'day': 1,      # Текущий день
-                'max_days': 30, # До зарплаты
-                'month': 1,    # Текущий месяц (уровень)
-                'energy': 100,
-                'max_energy': 100,
-                'money_per_work': 50,  # За одно нажатие "работать"
-                'last_event': None,
-                'last_event_time': 0,
-                'salary': 25000,  # Зарплата в конце месяца
-                'trait': None,    # Черта личности
-                'trait_selected': False,  # Выбрана ли черта
-                'current_job': 'delivery',  # Текущая работа
-                'unlocked_jobs': ['delivery'],  # Открытые работы
-                'boosters': {},  # Активные бустеры {booster_id: days_left}
-                'owned_items': [],  # Купленные предметы
-                'cars': [],  # Купленные машины
-                'real_estate': [],  # Купленная недвижимость
-                'credits': [],  # Активные кредиты
-                'monthly_income': 0,  # Пассивный доход
-                'monthly_expenses': 0,  # Ежемесячные расходы
-                'completed_goals': [],  # Выполненные цели
-                'total_goals_completed': 0,  # Счетчик выполненных целей
-                'worked_today': False,  # Работал ли сегодня
-                'mood': 50,  # Настроение (0-100)
-                'total_earned': 0,  # Всего заработано
-                'total_spent': 0,  # Всего потрачено
-                'work_count': 0,  # Сколько раз работал
-                'health': 100,  # Здоровье (0-100)
-                'skills': {  # Навыки
-                    'speed': 1,  # Скорость (меньше энергии на работу)
-                    'luck': 1,  # Удача (больше шанс позитивных событий)
-                    'charisma': 1,  # Харизма (больше доход)
-                    'intelligence': 1  # Интеллект (быстрее прокачка)
-                },
-                'skill_points': 0,  # Очки навыков
-                'rest_count': 0,  # Сколько раз отдыхал сегодня
-                'had_credits': False  # Брал ли когда-либо кредиты
-            }
-            # Сохраняем нового пользователя в БД
-            save_user_data(user_id, users_data[user_id])
-    
-    return jsonify(users_data[user_id])
+    try:
+        user_data = get_user_data(user_id)
+        return jsonify(user_data)
+    except Exception as e:
+        logger.error(f"Error getting user {user_id}: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/api/set_name', methods=['POST'])
+@limiter.limit("5 per minute")
 def set_player_name():
     """Установить имя игрока"""
     data = request.json
@@ -545,6 +679,8 @@ def get_leaderboard():
             # Получаем топ-50 игроков по деньгам
             cursor.execute('''
                 SELECT user_id, data FROM users
+                ORDER BY last_updated DESC
+                LIMIT 1000
             ''')
             
             players = []
@@ -561,7 +697,11 @@ def get_leaderboard():
                             'total_earned': user_data.get('total_earned', 0),
                             'total_goals': user_data.get('total_goals_completed', 0)
                         })
-                except:
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Invalid JSON for user {user_id}: {e}")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error processing user {user_id}: {e}")
                     continue
             
             conn.close()
@@ -573,14 +713,24 @@ def get_leaderboard():
             return jsonify(players[:50])
             
     except Exception as e:
-        print(f"Ошибка получения таблицы лидеров: {e}")
-        return jsonify([])
+        logger.error(f"Error getting leaderboard: {e}")
+        return jsonify({"error": "Failed to load leaderboard"}), 500
 
 @app.route('/api/reset/<user_id>', methods=['POST'])
 def reset_user(user_id):
     """Сбросить данные пользователя (начать заново)"""
-    if user_id in users_data:
-        del users_data[user_id]
+    with cache_lock:
+        if user_id in users_data_cache:
+            del users_data_cache[user_id]
+    
+    # Удаляем из БД
+    with db_lock:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM users WHERE user_id = ?', (user_id,))
+            conn.commit()
+    
+    logger.info(f"User {user_id} data reset")
     return jsonify({"message": "User data reset successfully"})
 
 @app.route('/api/jobs')
@@ -1276,6 +1426,7 @@ def upgrade_skill():
     })
 
 @app.route('/api/work', methods=['POST'])
+@limiter.limit("30 per minute")  # Макс 30 работ в минуту
 def work():
     """Обработка нажатия кнопки РАБОТАТЬ"""
     data = request.json
