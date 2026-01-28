@@ -926,14 +926,13 @@ def check_goals():
         return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
-    
-    user = users_data[user_id]
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
     newly_completed = check_and_complete_goals(user)
     
     # Сохраняем изменения в БД
-    save_user_data(user_id, user)
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'user': user,
@@ -965,7 +964,7 @@ def change_job():
     user['current_job'] = job_id
     
     # Сохраняем изменения в БД
-    save_user_data(user_id, user)
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1024,7 +1023,7 @@ def buy_booster():
         user['boosters'][booster_id] = booster['duration']
     
     # Сохраняем изменения в БД
-    save_user_data(user_id, user)
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1176,7 +1175,7 @@ def buy_car():
         newly_completed_goals = check_and_complete_goals(user)
         
         # Сохраняем изменения в БД
-        save_user_data(user_id, user)
+        save_user_data_safe(user_id, user)
         
         return jsonify({
             'user': user,
@@ -1233,7 +1232,7 @@ def buy_car():
         user['had_credits'] = True
         
         # Сохраняем изменения в БД
-        save_user_data(user_id, user)
+        save_user_data_safe(user_id, user)
         
         return jsonify({
             'user': user,
@@ -1289,7 +1288,7 @@ def buy_real_estate():
         user['monthly_expenses'] += abs(property_data['monthly_cost'])
         
         # Сохраняем изменения в БД
-        save_user_data(user_id, user)
+        save_user_data_safe(user_id, user)
         
         return jsonify({
             'user': user,
@@ -1346,7 +1345,7 @@ def buy_real_estate():
         user['had_credits'] = True
         
         # Сохраняем изменения в БД
-        save_user_data(user_id, user)
+        save_user_data_safe(user_id, user)
         
         return jsonify({
             'user': user,
@@ -1372,13 +1371,13 @@ def select_trait():
     user_id = data.get('user_id')
     trait_id = data.get('trait_id')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
         
     if trait_id not in TRAITS:
         return jsonify({"error": "Invalid trait"}), 400
         
-    user = users_data[user_id]
     if user['trait_selected']:
         return jsonify({"error": "Trait already selected"}), 400
         
@@ -1386,7 +1385,7 @@ def select_trait():
     user['trait_selected'] = True
     
     # Сохраняем изменения в БД
-    save_user_data(user_id, user)
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1402,10 +1401,9 @@ def buy_food():
         return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
-    
-    user = users_data[user_id]
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
     cost = 200
     
     if user['money'] < cost:
@@ -1416,7 +1414,7 @@ def buy_food():
     user['health'] = min(100, user.get('health', 100) + 15)  # Добавлено восстановление здоровья
     
     # Сохраняем изменения в БД
-    save_user_data(user_id, user)
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1432,10 +1430,9 @@ def take_rest():
         return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
-    
-    user = users_data[user_id]
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
     
     # Проверяем сколько раз уже отдыхал сегодня
     rest_count = user.get('rest_count_today', 0)
@@ -1448,7 +1445,7 @@ def take_rest():
     user['rest_count_today'] = rest_count + 1
     
     # Сохраняем изменения в БД
-    save_user_data(user_id, user)
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1464,10 +1461,9 @@ def random_event():
         return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
-    
-    user = users_data[user_id]
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
     
     # Выбираем случайное событие
     event = random.choice(EVENTS)
@@ -1495,7 +1491,7 @@ def random_event():
         message += ' ' + ('+' if mood_change > 0 else '') + str(mood_change) + ' настроения'
     
     # Сохраняем изменения в БД
-    save_user_data(user_id, user)
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1513,10 +1509,9 @@ def play_roulette():
     user_id = data.get('user_id')
     bet = data.get('bet', 100)
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
-    
-    user = users_data[user_id]
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
     
     if user['money'] < bet:
         return jsonify({"error": "Недостаточно денег!"}), 400
@@ -1556,7 +1551,7 @@ def play_roulette():
         user['mood'] = min(100, user.get('mood', 50) + 15)
     
     # Сохраняем изменения в БД
-    save_user_data(user_id, user)
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1575,10 +1570,9 @@ def upgrade_skill():
     user_id = data.get('user_id')
     skill = data.get('skill')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
-    
-    user = users_data[user_id]
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
     
     if 'skills' not in user:
         user['skills'] = {'speed': 1, 'luck': 1, 'charisma': 1, 'intelligence': 1}
@@ -1605,7 +1599,7 @@ def upgrade_skill():
     }
     
     # Сохраняем изменения в БД
-    save_user_data(user_id, user)
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1621,10 +1615,9 @@ def work():
         return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
-    
-    user = users_data[user_id]
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
     
     # Проверяем энергию
     if user['energy'] <= 0:
@@ -1773,7 +1766,7 @@ def work():
     newly_completed_goals = check_and_complete_goals(user)
     
     # Сохраняем изменения в БД
-    save_user_data(user_id, user)
+    save_user_data_safe(user_id, user)
     
     return jsonify({
         'user': user,
@@ -1793,10 +1786,9 @@ def next_day():
         return jsonify({"error": "Invalid JSON data"}), 400
     user_id = data.get('user_id')
     
-    if user_id not in users_data:
-        return jsonify({"error": "User not found"}), 404
-    
-    user = users_data[user_id]
+    user = get_user_data_safe(user_id)
+    if not user:
+        return jsonify({"error": "Invalid user_id"}), 400
     
     # Сбрасываем флаг работы (если был)
     user['worked_today'] = False
@@ -1812,7 +1804,7 @@ def next_day():
             user['energy'] = user['max_energy']
             user['day'] += 1
             # Сохраняем изменения в БД
-            save_user_data(user_id, user)
+            save_user_data_safe(user_id, user)
             return jsonify({
                 'user': user,
                 'day_skipped': True,
@@ -1858,7 +1850,7 @@ def next_day():
         newly_completed_goals = check_and_complete_goals(user)
         
         # Сохраняем изменения в БД
-        save_user_data(user_id, user)
+        save_user_data_safe(user_id, user)
         
         return jsonify({
             'user': user,
@@ -1933,7 +1925,7 @@ def next_day():
             message += f"\n🎉 Открыты новые работы: {', '.join(job_names)}"
             
         # Сохраняем изменения в БД
-        save_user_data(user_id, user)
+        save_user_data_safe(user_id, user)
         
         return jsonify({
             'user': user,
