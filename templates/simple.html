@@ -1204,7 +1204,7 @@
             setTimeout(function() { msg.style.display = 'none'; }, 3000);
         }
         
-        async function work() {
+        async function work(retryCount = 0) {
             try {
                 const response = await fetch('/api/work', {
                     method: 'POST',
@@ -1222,11 +1222,24 @@
                     showMessage(error.error || 'Ошибка!', false);
                 }
             } catch (error) {
-                showMessage('Ошибка соединения!', false);
+                console.error('Ошибка при работе:', error);
+                
+                // Повторная попытка
+                if (retryCount < 2) {
+                    showMessage(`🔄 Переподключение... ${retryCount + 1}/2`, false);
+                    setTimeout(() => work(retryCount + 1), 2000);
+                } else {
+                    showMessage('❌ Ошибка соединения! Обновите страницу (F5)', false);
+                }
             }
         }
         
-        async function nextDay() {
+        async function nextDay(retryCount = 0) {
+            // Показываем индикатор загрузки
+            if (retryCount === 0) {
+                showMessage('Переход на следующий день...', true);
+            }
+            
             try {
                 const response = await fetch('/api/next_day', {
                     method: 'POST',
@@ -1238,13 +1251,27 @@
                     const result = await response.json();
                     gameData = result.user;
                     updateUI();
-                    showMessage('Новый день начался! 🌅', true);
+                    
+                    // Проверяем что энергия восстановилась
+                    if (gameData.energy === gameData.max_energy) {
+                        showMessage('✅ Новый день! Энергия полностью восстановлена!', true);
+                    } else {
+                        showMessage(`⚠️ Новый день! Энергия: ${gameData.energy}/${gameData.max_energy}`, true);
+                    }
                 } else {
                     const error = await response.json();
                     showMessage(error.error || 'Ошибка!', false);
                 }
             } catch (error) {
-                showMessage('Ошибка!', false);
+                console.error('Ошибка при переходе на следующий день:', error);
+                
+                // Повторная попытка (максимум 3 раза)
+                if (retryCount < 3) {
+                    showMessage(`🔄 Сервер просыпается... Попытка ${retryCount + 1}/3`, false);
+                    setTimeout(() => nextDay(retryCount + 1), 3000); // Ждём 3 секунды
+                } else {
+                    showMessage('❌ Сервер не отвечает. Подождите 1 минуту и обновите страницу (F5)', false);
+                }
             }
         }
         
