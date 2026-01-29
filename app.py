@@ -267,7 +267,13 @@ def get_user_data_safe(user_id):
     # Загружаем из БД
     db_data = load_user_data(user_id)
     if db_data:
-        logger.info(f"User {user_id} found in DB - money: {db_data.get('money', 0)}, trait: {db_data.get('trait', 'None')}")
+        logger.info(f"User {user_id} found in DB - money: {db_data.get('money', 0)}, energy: {db_data.get('energy', 'NOT SET')}, trait: {db_data.get('trait', 'None')}")
+        
+        # МИГРАЦИЯ: Если energy не установлена, устанавливаем
+        if 'energy' not in db_data:
+            db_data['energy'] = 100
+            logger.warning(f"MIGRATION: Added energy=100 for user {user_id}")
+            save_user_data(user_id, db_data)
         
         # ИСПРАВЛЕНИЕ: Если max_energy не установлен или меньше 100, исправляем
         if 'max_energy' not in db_data or db_data['max_energy'] < 100:
