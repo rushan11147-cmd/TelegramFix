@@ -30,6 +30,9 @@ from side_jobs_config import SIDE_JOBS, CATEGORIES
 # Import entertainment system
 from entertainment_system import EntertainmentManager
 
+# Import balance system
+from balance_system import BalanceManager
+
 load_dotenv()
 
 # Настройка логирования
@@ -381,6 +384,9 @@ side_jobs_manager = SideJobManager(get_user_data_safe, save_user_data_safe)
 # Инициализируем Entertainment Manager
 entertainment_manager = EntertainmentManager(get_user_data_safe, save_user_data_safe)
 
+# Инициализируем Balance Manager
+balance_manager = BalanceManager(get_user_data_safe, save_user_data_safe)
+
 
 # События игры
 EVENTS = [
@@ -444,37 +450,37 @@ TRAITS = {
     }
 }
 
-# Виды работ
+# Виды работ (income rates managed by balance_system)
 JOBS = {
     "delivery": {
         "name": "Доставка еды",
         "emoji": "🛵",
-        "base_income": 80,
-        "energy_cost": 5,  # Было 15, стало 5
+        "base_income": 150,  # Managed by balance_config
+        "energy_cost": 5,
         "unlock_day": 1,
         "description": "Быстрые деньги, но устаёшь"
     },
     "office": {
         "name": "Офисная работа", 
         "emoji": "💻",
-        "base_income": 120,
-        "energy_cost": 3,  # Было 10, стало 3
+        "base_income": 200,  # Managed by balance_config
+        "energy_cost": 3,
         "unlock_day": 5,
         "description": "Стабильный доход"
     },
     "freelance": {
         "name": "Фриланс",
         "emoji": "🎨", 
-        "base_income": 200,
-        "energy_cost": 7,  # Было 20, стало 7
+        "base_income": 300,  # Managed by balance_config
+        "energy_cost": 7,
         "unlock_day": 10,
         "description": "Высокий доход, но нестабильно"
     },
     "crypto": {
         "name": "Крипто-трейдинг",
         "emoji": "📈",
-        "base_income": 300,
-        "energy_cost": 10,  # Было 25, стало 10
+        "base_income": 450,  # Managed by balance_config
+        "energy_cost": 10,
         "unlock_day": 15,
         "description": "Рискованно, но прибыльно"
     }
@@ -798,6 +804,11 @@ def business_test():
 @app.route('/test-button')
 def test_button():
     return render_template('test_business_button.html')
+
+@app.route('/admin/reset')
+def admin_reset_page():
+    """Страница сброса базы данных для админа"""
+    return render_template('admin_reset.html')
 
 @app.route('/api/user/<user_id>')
 def get_user(user_id):
@@ -1908,6 +1919,9 @@ def next_day():
         user['energy'] = user['max_energy']  # Восстанавливаем энергию
         user['health'] = min(100, user.get('health', 100) + 30)  # Восстанавливаем здоровье
         
+        # ОБРАБОТКА БАЛАНСИРОВКИ ЭКОНОМИКИ - ежедневные расходы и события
+        balance_result = balance_manager.process_new_day(user_id)
+        
         # ОБРАБОТКА БИЗНЕСОВ - ежедневные операции
         business_report = business_manager.process_daily_operations(user_id)
         
@@ -1983,6 +1997,20 @@ def next_day():
         if new_jobs:
             job_names = [job['name'] for job in new_jobs]
             message += f"\n🎉 Открыты новые работы: {', '.join(job_names)}"
+        
+        # Добавляем информацию о балансе
+        if balance_result and balance_result.get('success'):
+            expenses = balance_result.get('expenses', {})
+            if expenses:
+                message += f"\n💸 Ежедневные расходы: -{int(expenses.get('final_total', 0))}₽"
+            
+            event = balance_result.get('event')
+            if event:
+                message += f"\n{event.get('emoji', '⚠️')} {event.get('name', 'Событие')}: -{event.get('cost', 0)}₽"
+            
+            tier_change = balance_result.get('tier_change')
+            if tier_change:
+                message += f"\n📊 Уровень богатства: {tier_change['old']} → {tier_change['new']}"
             
         # Сохраняем изменения в БД
         save_user_data_safe(user_id, user)
@@ -1992,6 +2020,12 @@ def next_day():
             'daily_cost': daily_cost,
             'passive_income': passive_income if user['day'] % 30 == 1 else 0,
             'monthly_expenses': monthly_expenses if user['day'] % 30 == 1 else 0,
+            'balance_info': {
+                'expenses': balance_result.get('expenses', {}),
+                'event': balance_result.get('event'),
+                'tier_change': balance_result.get('tier_change'),
+                'debt_info': balance_result.get('debt_info', {})
+            } if balance_result and balance_result.get('success') else None,
             'business_report': {
                 'total_revenue': business_report.total_revenue,
                 'total_expenses': business_report.total_expenses,
@@ -2503,6 +2537,106 @@ def get_entertainment_stats():
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error getting entertainment stats: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================
+# BALANCE SYSTEM API ENDPOINTS
+# ============================================
+
+@app.route('/api/balance/summary', methods=['GET'])
+def get_balance_summary():
+    """Получить текущий финансовый статус игрока"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({"error": "user_id is required"}), 400
+        
+        result = balance_manager.get_financial_summary(user_id)
+        
+        if not result.get('success'):
+            return jsonify({"error": result.get('error', 'Unknown error')}), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting balance summary: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/balance/history', methods=['GET'])
+def get_financial_history():
+    """Получить финансовую историю за последние N дней"""
+    try:
+        user_id = request.args.get('user_id')
+        days = request.args.get('days', 30, type=int)
+        
+        if not user_id:
+            return jsonify({"error": "user_id is required"}), 400
+        
+        user = get_user_data_safe(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        
+        history = balance_manager.history_manager.get_history(user, days=days)
+        
+        return jsonify({
+            'success': True,
+            'history': history,
+            'days': days
+        })
+    except Exception as e:
+        logger.error(f"Error getting financial history: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================
+# ADMIN API - RESET DATABASE
+# ============================================
+
+@app.route('/api/admin/reset_database', methods=['POST'])
+def admin_reset_database():
+    """Сброс базы данных (удаление всех пользователей)"""
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({"error": "Invalid JSON data"}), 400
+        
+        # Проверка секретного пароля
+        admin_password = data.get('password')
+        secret_password = os.getenv('ADMIN_PASSWORD', 'admin123')  # Установи в .env!
+        
+        if admin_password != secret_password:
+            logger.warning(f"Failed admin reset attempt with password: {admin_password}")
+            return jsonify({"error": "Неверный пароль администратора"}), 403
+        
+        # Удаляем всех пользователей
+        deleted_count = 0
+        with db_lock:
+            if USE_POSTGRES:
+                conn = psycopg2.connect(DATABASE_URL)
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM users')
+                deleted_count = cursor.rowcount
+                conn.commit()
+                cursor.close()
+                conn.close()
+                logger.info(f"PostgreSQL: Deleted {deleted_count} users")
+            else:
+                with sqlite3.connect(DB_PATH) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('DELETE FROM users')
+                    deleted_count = cursor.rowcount
+                    conn.commit()
+                logger.info(f"SQLite: Deleted {deleted_count} users")
+        
+        return jsonify({
+            "success": True,
+            "deleted": deleted_count,
+            "message": f"База данных сброшена! Удалено пользователей: {deleted_count}"
+        })
+    
+    except Exception as e:
+        logger.error(f"Error resetting database: {e}")
         return jsonify({"error": str(e)}), 500
 
 
