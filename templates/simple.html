@@ -486,7 +486,7 @@
                     <span id="healthText">Здоров</span>
                 </div>
                 
-                <div class="nav-buttons">
+                <div class="nav-buttons" style="grid-template-columns: repeat(4, 1fr);">
                     <button class="nav-btn" onclick="showJobs()">
                         <span class="nav-btn-icon"><i class="fas fa-briefcase"></i></span>
                         Работа
@@ -494,6 +494,10 @@
                     <button class="nav-btn shop" onclick="showShop()">
                         <span class="nav-btn-icon"><i class="fas fa-shopping-cart"></i></span>
                         Магазин
+                    </button>
+                    <button class="nav-btn" onclick="showBusiness()" style="background: linear-gradient(135deg, #8e44ad 0%, #6c3483 100%); border-color: #5b2c6f;">
+                        <span class="nav-btn-icon"><i class="fas fa-store"></i></span>
+                        Бизнес
                     </button>
                     <button class="nav-btn goals" onclick="showGoals()">
                         <span class="nav-btn-icon"><i class="fas fa-trophy"></i></span>
@@ -583,6 +587,20 @@
                 <button class="close-btn" onclick="document.getElementById('goalsModal').style.display='none'">×</button>
             </div>
             <div class="modal-body" id="goalsList"></div>
+        </div>
+    </div>
+    
+    <div class="modal" id="businessModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div style="font-size: 20px; font-weight: bold;"><i class="fas fa-store"></i> Мой бизнес</div>
+                <button class="close-btn" onclick="document.getElementById('businessModal').style.display='none'">×</button>
+            </div>
+            <div class="modal-body" id="businessList">
+                <div style="text-align: center; padding: 20px;">
+                    <p style="margin-bottom: 15px;">Загрузка...</p>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -734,6 +752,22 @@
                 <h2 style="margin: 0; color: white;"><i class="fas fa-hand-wave"></i> Добро пожаловать!</h2>
             </div>
             <div class="modal-body" style="padding: 25px; line-height: 1.8; color: #2c3e50;">
+                <!-- НОВОЕ ОБНОВЛЕНИЕ -->
+                <div style="background: linear-gradient(135deg, #8e44ad 0%, #6c3483 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px; color: white; text-align: center; border: 3px solid #5b2c6f; box-shadow: 0 4px 15px rgba(142, 68, 173, 0.3);">
+                    <div style="font-size: 32px; margin-bottom: 10px;">🎉 🏪 🎉</div>
+                    <h3 style="margin: 0 0 10px 0; font-size: 22px;"><i class="fas fa-star"></i> НОВОЕ ОБНОВЛЕНИЕ!</h3>
+                    <p style="font-size: 16px; margin: 10px 0; font-weight: bold;">Теперь доступна система БИЗНЕСА!</p>
+                    <ul style="text-align: left; margin: 15px 0; padding-left: 25px; font-size: 14px;">
+                        <li style="margin-bottom: 8px;">🏪 Открывай свой бизнес (киоск, кафе, ресторан)</li>
+                        <li style="margin-bottom: 8px;">👥 Нанимай сотрудников (повар, кассир, менеджер)</li>
+                        <li style="margin-bottom: 8px;">📦 Покупай запасы и улучшения</li>
+                        <li style="margin-bottom: 8px;">💰 Получай пассивный доход каждый день!</li>
+                    </ul>
+                    <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; margin-top: 15px;">
+                        <strong>Найди кнопку "Бизнес" 🏪 в главном меню!</strong>
+                    </div>
+                </div>
+                
                 <div style="text-align: center; margin-bottom: 20px;">
                     <p style="font-size: 18px; margin-bottom: 15px;">👋 Привет! Рады видеть тебя в игре <strong>"Выживи до зарплаты"</strong></p>
                 </div>
@@ -742,6 +776,7 @@
                     <h3 style="margin-top: 0; color: #667eea;"><i class="fas fa-gamepad"></i> Как играть:</h3>
                     <ul style="margin: 10px 0; padding-left: 25px;">
                         <li style="margin-bottom: 10px;"><strong>💼 Работай</strong> — зарабатывай деньги, но следи за энергией</li>
+                        <li style="margin-bottom: 10px;"><strong>🏪 Открывай бизнес</strong> — получай пассивный доход!</li>
                         <li style="margin-bottom: 10px;"><strong>🛒 Покупай</strong> — бустеры, машины и недвижимость помогут тебе</li>
                         <li style="margin-bottom: 10px;"><strong>🎯 Выполняй цели</strong> — получай награды за достижения</li>
                         <li style="margin-bottom: 10px;"><strong>📅 Доживи до зарплаты</strong> — 30 дней до получения денег</li>
@@ -1708,6 +1743,195 @@
                 document.getElementById('goalsModal').style.display = 'flex';
             } catch (error) {
                 showMessage('Ошибка загрузки!', false);
+            }
+        }
+        
+        // ============================================
+        // БИЗНЕС СИСТЕМА
+        // ============================================
+        
+        async function showBusiness() {
+            try {
+                const response = await fetch(`/api/business/list?user_id=${userId}`);
+                const data = await response.json();
+                
+                const businessList = document.getElementById('businessList');
+                businessList.innerHTML = '';
+                
+                // Кнопка создать бизнес
+                const createSection = document.createElement('div');
+                createSection.style.cssText = 'margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #8e44ad 0%, #6c3483 100%); border-radius: 12px; color: white;';
+                createSection.innerHTML = `
+                    <h3 style="margin-bottom: 10px;"><i class="fas fa-plus-circle"></i> Создать бизнес</h3>
+                    <select id="businessTypeSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: none; margin-bottom: 10px; font-size: 14px;">
+                        <option value="kiosk">🏪 Киоск с шаурмой - 50,000₽</option>
+                        <option value="cafe">☕ Кафе - 300,000₽</option>
+                        <option value="restaurant">🍽️ Ресторан - 1,000,000₽</option>
+                        <option value="restaurant_chain">🏢 Сеть ресторанов - 5,000,000₽</option>
+                    </select>
+                    <button onclick="createBusiness()" style="width: 100%; padding: 12px; background: white; color: #8e44ad; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;">
+                        <i class="fas fa-store"></i> Создать бизнес
+                    </button>
+                `;
+                businessList.appendChild(createSection);
+                
+                // Список бизнесов
+                if (data.businesses && data.businesses.length > 0) {
+                    data.businesses.forEach(business => {
+                        const card = document.createElement('div');
+                        card.className = 'item-card';
+                        card.style.cssText = 'margin-bottom: 15px;';
+                        
+                        const profitClass = business.net_profit >= 0 ? 'profit' : 'loss';
+                        const profitColor = business.net_profit >= 0 ? '#27ae60' : '#e74c3c';
+                        
+                        card.innerHTML = `
+                            <div class="item-header">
+                                <div class="item-icon">${business.config.emoji}</div>
+                                <div class="item-name">${business.config.name}</div>
+                                <div class="item-price" style="color: ${profitColor};">
+                                    ${business.net_profit >= 0 ? '+' : ''}${Math.round(business.net_profit)}₽/день
+                                </div>
+                            </div>
+                            <div class="item-desc">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <div>⭐ Рейтинг: ${business.rating.toFixed(1)}/5.0</div>
+                                    <div>📦 Запасы: ${Math.round(business.inventory_level)}%</div>
+                                    <div>👥 Сотрудников: ${business.employees.length}/${business.config.max_employees}</div>
+                                    <div>💵 Доход: ${Math.round(business.daily_revenue)}₽</div>
+                                </div>
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                    <button onclick="buyInventory('${business.business_id}')" style="flex: 1; padding: 8px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                        📦 Запасы (5,000₽)
+                                    </button>
+                                    <button onclick="hireEmployee('${business.business_id}')" style="flex: 1; padding: 8px; background: #27ae60; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                        👤 Нанять
+                                    </button>
+                                    <button onclick="sellBusiness('${business.business_id}')" style="flex: 1; padding: 8px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                        💰 Продать
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        businessList.appendChild(card);
+                    });
+                } else {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.style.cssText = 'text-align: center; padding: 20px; color: #888;';
+                    emptyMsg.innerHTML = '<p>У вас пока нет бизнесов</p><p style="font-size: 12px; margin-top: 10px;">Создайте свой первый бизнес выше!</p>';
+                    businessList.appendChild(emptyMsg);
+                }
+                
+                document.getElementById('businessModal').style.display = 'flex';
+            } catch (error) {
+                console.error('Error loading business:', error);
+                showMessage('Ошибка загрузки бизнесов!', false);
+            }
+        }
+        
+        async function createBusiness() {
+            const businessType = document.getElementById('businessTypeSelect').value;
+            
+            try {
+                const response = await fetch('/api/business/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: userId,
+                        business_type: businessType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, true);
+                    await updateGameData();
+                    await showBusiness(); // Обновляем список
+                } else {
+                    showMessage(data.error || 'Ошибка создания бизнеса', false);
+                }
+            } catch (error) {
+                console.error('Error creating business:', error);
+                showMessage('Ошибка создания бизнеса!', false);
+            }
+        }
+        
+        async function buyInventory(businessId) {
+            try {
+                const response = await fetch(`/api/business/${businessId}/buy-inventory`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: userId})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, true);
+                    await updateGameData();
+                    await showBusiness();
+                } else {
+                    showMessage(data.error || 'Ошибка покупки запасов', false);
+                }
+            } catch (error) {
+                console.error('Error buying inventory:', error);
+                showMessage('Ошибка покупки запасов!', false);
+            }
+        }
+        
+        async function hireEmployee(businessId) {
+            const employeeType = prompt('Выберите тип сотрудника:\nchef - Повар (5,000₽/день, +30% качество)\ncashier - Кассир (3,000₽/день, +20% скорость)\nmanager - Менеджер (8,000₽/день, +25% доход)');
+            
+            if (!employeeType) return;
+            
+            try {
+                const response = await fetch(`/api/business/${businessId}/hire`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: userId,
+                        employee_type: employeeType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, true);
+                    await updateGameData();
+                    await showBusiness();
+                } else {
+                    showMessage(data.error || 'Ошибка найма сотрудника', false);
+                }
+            } catch (error) {
+                console.error('Error hiring employee:', error);
+                showMessage('Ошибка найма сотрудника!', false);
+            }
+        }
+        
+        async function sellBusiness(businessId) {
+            if (!confirm('Вы уверены что хотите продать бизнес? Вы получите 50% от вложенных средств.')) return;
+            
+            try {
+                const response = await fetch(`/api/business/${businessId}/sell`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: userId})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, true);
+                    await updateGameData();
+                    await showBusiness();
+                } else {
+                    showMessage(data.error || 'Ошибка продажи бизнеса', false);
+                }
+            } catch (error) {
+                console.error('Error selling business:', error);
+                showMessage('Ошибка продажи бизнеса!', false);
             }
         }
         

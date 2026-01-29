@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест бизнес-системы</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        h1 { color: #4ecca3; }
+        .section {
+            background: #16213e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 2px solid #0f3460;
+        }
+        button {
+            background: #4ecca3;
+            color: #1a1a2e;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #45b393;
+        }
+        .business-card {
+            background: #0f3460;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4ecca3;
+        }
+        .profit { color: #4ecca3; }
+        .loss { color: #ff6b6b; }
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #0f3460;
+            background: #16213e;
+            color: #eee;
+        }
+        #output {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #4ecca3; }
+        .error { color: #ff6b6b; }
+    </style>
+</head>
+<body>
+    <h1>🏪 Тест бизнес-системы</h1>
+    
+    <div class="section">
+        <h2>👤 User ID</h2>
+        <input type="text" id="userId" value="demo_user" placeholder="User ID">
+        <button onclick="loadUserData()">Загрузить данные пользователя</button>
+    </div>
+
+    <div class="section">
+        <h2>🏗️ Создать бизнес</h2>
+        <select id="businessType">
+            <option value="kiosk">🏪 Киоск (50,000₽)</option>
+            <option value="cafe">☕ Кафе (300,000₽)</option>
+            <option value="restaurant">🍽️ Ресторан (1,000,000₽)</option>
+            <option value="restaurant_chain">🏢 Сеть (5,000,000₽)</option>
+        </select>
+        <button onclick="createBusiness()">Создать</button>
+    </div>
+
+    <div class="section">
+        <h2>📋 Мои бизнесы</h2>
+        <button onclick="loadBusinesses()">Обновить список</button>
+        <div id="businessList"></div>
+    </div>
+
+    <div class="section">
+        <h2>⚙️ Конфигурации</h2>
+        <button onclick="loadConfigs()">Загрузить конфигурации</button>
+    </div>
+
+    <div class="section">
+        <h2>📊 Вывод</h2>
+        <div id="output">Здесь будут результаты запросов...</div>
+    </div>
+
+    <script>
+        const userId = () => document.getElementById('userId').value;
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function apiCall(url, method = 'GET', body = null) {
+            try {
+                log(`→ ${method} ${url}`);
+                const options = {
+                    method,
+                    headers: {'Content-Type': 'application/json'}
+                };
+                if (body) {
+                    options.body = JSON.stringify(body);
+                    log(`  Body: ${JSON.stringify(body, null, 2)}`);
+                }
+                
+                const response = await fetch(url, options);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✓ ${response.status} OK`, 'success');
+                    log(`  ${JSON.stringify(data, null, 2)}`);
+                    return data;
+                } else {
+                    log(`✗ ${response.status} Error: ${data.error || 'Unknown error'}`, 'error');
+                    return null;
+                }
+            } catch (error) {
+                log(`✗ Network error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function loadUserData() {
+            const data = await apiCall(`/api/user/${userId()}`);
+            if (data) {
+                log(`💰 Деньги: ${data.money}₽`, 'success');
+                log(`📅 День: ${data.day}/${data.max_days}`, 'success');
+            }
+        }
+
+        async function createBusiness() {
+            const businessType = document.getElementById('businessType').value;
+            const data = await apiCall('/api/business/create', 'POST', {
+                user_id: userId(),
+                business_type: businessType
+            });
+            if (data && data.success) {
+                log(`✓ Бизнес создан!`, 'success');
+                await loadBusinesses();
+            }
+        }
+
+        async function loadBusinesses() {
+            const data = await apiCall(`/api/business/list?user_id=${userId()}`);
+            if (data) {
+                const container = document.getElementById('businessList');
+                if (data.businesses.length === 0) {
+                    container.innerHTML = '<p>У вас пока нет бизнесов</p>';
+                } else {
+                    container.innerHTML = data.businesses.map(b => `
+                        <div class="business-card">
+                            <h3>${b.config.emoji} ${b.config.name}</h3>
+                            <p>⭐ Рейтинг: ${b.rating.toFixed(1)}/5.0</p>
+                            <p>📦 Запасы: ${b.inventory_level.toFixed(0)}%</p>
+                            <p>👥 Сотрудников: ${b.employees.length}/${b.config.max_employees}</p>
+                            <p>💵 Доход: ${Math.round(b.daily_revenue)}₽/день</p>
+                            <p>💸 Расходы: ${Math.round(b.daily_expenses)}₽/день</p>
+                            <p class="${b.net_profit >= 0 ? 'profit' : 'loss'}">
+                                💰 Прибыль: ${b.net_profit >= 0 ? '+' : ''}${Math.round(b.net_profit)}₽/день
+                            </p>
+                            <button onclick="buyInventory('${b.business_id}')">Купить запасы (5,000₽)</button>
+                            <button onclick="hireEmployee('${b.business_id}')">Нанять сотрудника</button>
+                            <button onclick="sellBusiness('${b.business_id}')">Продать бизнес</button>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+
+        async function buyInventory(businessId) {
+            const data = await apiCall(`/api/business/${businessId}/buy-inventory`, 'POST', {
+                user_id: userId()
+            });
+            if (data && data.success) {
+                log(`✓ ${data.message}`, 'success');
+                await loadBusinesses();
+            }
+        }
+
+        async function hireEmployee(businessId) {
+            const employeeType = prompt('Тип сотрудника (chef/cashier/manager):');
+            if (!employeeType) return;
+            
+            const data = await apiCall(`/api/business/${businessId}/hire`, 'POST', {
+                user_id: userId(),
+                employee_type: employeeType
+            });
+            if (data && data.success) {
+                log(`✓ ${data.message}`, 'success');
+                await loadBusinesses();
+            }
+        }
+
+        async function sellBusiness(businessId) {
+            if (!confirm('Вы уверены что хотите продать бизнес?')) return;
+            
+            const data = await apiCall(`/api/business/${businessId}/sell`, 'POST', {
+                user_id: userId()
+            });
+            if (data && data.success) {
+                log(`✓ ${data.message}`, 'success');
+                await loadBusinesses();
+            }
+        }
+
+        async function loadConfigs() {
+            await apiCall('/api/business/configs');
+        }
+
+        // Загружаем данные при старте
+        window.onload = () => {
+            log('🚀 Страница загружена. Готов к тестированию!', 'success');
+            log('💡 Используйте кнопки выше для тестирования API');
+        };
+    </script>
+</body>
+</html>

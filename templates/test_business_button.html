@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест кнопки Бизнес</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #2c5f8d;
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+        }
+        .nav-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .nav-btn {
+            padding: 20px 10px;
+            border: 3px solid;
+            border-radius: 12px;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn-work {
+            background: linear-gradient(135deg, #8b4513 0%, #654321 100%);
+            border-color: #5a3a1a;
+        }
+        .btn-shop {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border-color: #21618c;
+        }
+        .btn-business {
+            background: linear-gradient(135deg, #8e44ad 0%, #6c3483 100%);
+            border-color: #5b2c6f;
+        }
+        .btn-goals {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            border-color: #ca6f1e;
+        }
+        .icon {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .info {
+            background: #d4edda;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Тест кнопки "Бизнес"</h1>
+        
+        <div class="info">
+            <strong>✅ Если вы видите 4 кнопки ниже - значит кнопка работает!</strong><br>
+            Должны быть: Работа, Магазин, <strong>Бизнес</strong>, Достижения
+        </div>
+        
+        <div class="nav-buttons">
+            <button class="nav-btn btn-work" onclick="alert('Работа!')">
+                <span class="icon">💼</span>
+                Работа
+            </button>
+            <button class="nav-btn btn-shop" onclick="alert('Магазин!')">
+                <span class="icon">🛒</span>
+                Магазин
+            </button>
+            <button class="nav-btn btn-business" onclick="alert('Бизнес!')">
+                <span class="icon">🏪</span>
+                Бизнес
+            </button>
+            <button class="nav-btn btn-goals" onclick="alert('Достижения!')">
+                <span class="icon">🏆</span>
+                Достижения
+            </button>
+        </div>
+        
+        <div class="info" style="background: #fff3cd; border-left-color: #ffc107;">
+            <strong>📝 Инструкция:</strong><br>
+            1. Если видите 4 кнопки - всё работает!<br>
+            2. Если видите только 3 кнопки - проблема в кэше браузера<br>
+            3. Нажмите Ctrl + F5 для жесткой перезагрузки<br>
+            4. Или откройте в режиме инкогнито (Ctrl + Shift + N)
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="/" style="display: inline-block; padding: 15px 30px; background: #27ae60; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                ← Вернуться к игре
+            </a>
+        </div>
+    </div>
+</body>
+</html>

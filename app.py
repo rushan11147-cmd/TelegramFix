@@ -16,6 +16,13 @@ import hashlib
 import urllib.parse
 import logging
 
+# Import business system
+from business_system import (
+    BusinessManager, BusinessRepository, BusinessType, EmployeeType,
+    UpgradeType, EventType, BUSINESS_CONFIGS, EMPLOYEE_CONFIGS,
+    UPGRADE_CONFIGS, EVENT_CONFIGS
+)
+
 load_dotenv()
 
 # Настройка логирования
@@ -349,6 +356,11 @@ def save_user_data_safe(user_id, user_data):
     save_user_data(user_id, user_data)
     logger.info(f"Successfully saved user data for: {user_id}")
     return True
+
+
+# Инициализируем Business Manager после определения функций
+business_repository = BusinessRepository(get_user_data_safe, save_user_data_safe)
+business_manager = BusinessManager(business_repository)
 
 
 # События игры
@@ -759,6 +771,14 @@ def test_simple():
 @app.route('/hello')
 def hello():
     return render_template('hello.html')
+
+@app.route('/business-test')
+def business_test():
+    return render_template('business_test.html')
+
+@app.route('/test-button')
+def test_button():
+    return render_template('test_business_button.html')
 
 @app.route('/api/user/<user_id>')
 def get_user(user_id):
@@ -1869,6 +1889,9 @@ def next_day():
         user['energy'] = user['max_energy']  # Восстанавливаем энергию
         user['health'] = min(100, user.get('health', 100) + 30)  # Восстанавливаем здоровье
         
+        # ОБРАБОТКА БИЗНЕСОВ - ежедневные операции
+        business_report = business_manager.process_daily_operations(user_id)
+        
         # Ежемесячные расходы и доходы (в начале каждого месяца - каждые 30 дней)
         passive_income = 0
         monthly_expenses = 0
@@ -1924,6 +1947,16 @@ def next_day():
             message += f"\n💰 Пассивный доход: +{passive_income}₽"
         if monthly_expenses > 0 and user['day'] % 30 == 1:
             message += f"\n💸 Ежемесячные расходы: -{monthly_expenses}₽"
+        
+        # Добавляем информацию о бизнесах
+        if business_report.businesses_processed > 0:
+            message += f"\n\n🏪 Бизнесы обработаны: {business_report.businesses_processed}"
+            message += f"\n💵 Доход от бизнесов: +{int(business_report.total_revenue)}₽"
+            message += f"\n💸 Расходы бизнесов: -{int(business_report.total_expenses)}₽"
+            message += f"\n💰 Чистая прибыль: {'+' if business_report.total_net_profit >= 0 else ''}{int(business_report.total_net_profit)}₽"
+            
+            if business_report.new_events:
+                message += f"\n⚠️ Новых событий: {len(business_report.new_events)}"
             
         if new_jobs:
             job_names = [job['name'] for job in new_jobs]
@@ -1937,10 +1970,338 @@ def next_day():
             'daily_cost': daily_cost,
             'passive_income': passive_income if user['day'] % 30 == 1 else 0,
             'monthly_expenses': monthly_expenses if user['day'] % 30 == 1 else 0,
+            'business_report': {
+                'total_revenue': business_report.total_revenue,
+                'total_expenses': business_report.total_expenses,
+                'total_net_profit': business_report.total_net_profit,
+                'businesses_processed': business_report.businesses_processed,
+                'new_events_count': len(business_report.new_events)
+            } if business_report.businesses_processed > 0 else None,
             'message': message,
             'new_jobs': new_jobs,
             'expired_boosters': expired_boosters
         })
+
+
+# ============================================
+# BUSINESS SYSTEM API ENDPOINTS
+# ============================================
+
+@app.route('/api/business/create', methods=['POST'])
+@limiter.limit("5 per minute")
+def create_business():
+    """Создать новый бизнес"""
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    user_id = data.get('user_id')
+    business_type_str = data.get('business_type')
+    
+    if not user_id or not business_type_str:
+        return jsonify({"error": "Missing user_id or business_type"}), 400
+    
+    try:
+        business_type = BusinessType(business_type_str)
+    except ValueError:
+        return jsonify({"error": "Invalid business_type"}), 400
+    
+    result = business_manager.create_business(user_id, business_type)
+    
+    if not result.success:
+        return jsonify({"error": result.error}), 400
+    
+    return jsonify({
+        "success": True,
+        "business": result.data.to_dict(),
+        "message": f"Бизнес создан! {BUSINESS_CONFIGS[business_type]['emoji']} {BUSINESS_CONFIGS[business_type]['name']}"
+    })
+
+
+@app.route('/api/business/list', methods=['GET'])
+def list_businesses():
+    """Получить список всех бизнесов пользователя"""
+    user_id = request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+    
+    businesses = business_manager.get_user_businesses(user_id)
+    
+    # Добавляем текущую статистику для каждого бизнеса
+    businesses_data = []
+    for business in businesses:
+        daily_revenue = business_manager.revenue_calculator.calculate_daily_revenue(business)
+        daily_expenses = business_manager.revenue_calculator.calculate_daily_expenses(business)
+        net_profit = daily_revenue - daily_expenses
+        
+        business_dict = business.to_dict()
+        business_dict['daily_revenue'] = daily_revenue
+        business_dict['daily_expenses'] = daily_expenses
+        business_dict['net_profit'] = net_profit
+        business_dict['config'] = BUSINESS_CONFIGS[business.business_type]
+        
+        businesses_data.append(business_dict)
+    
+    return jsonify({
+        "businesses": businesses_data,
+        "total_count": len(businesses_data)
+    })
+
+
+@app.route('/api/business/<business_id>', methods=['GET'])
+def get_business_detail(business_id):
+    """Получить детальную информацию о бизнесе"""
+    user_id = request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+    
+    business = business_manager.get_business(business_id, user_id)
+    
+    if not business:
+        return jsonify({"error": "Business not found"}), 404
+    
+    # Добавляем статистику
+    daily_revenue = business_manager.revenue_calculator.calculate_daily_revenue(business)
+    daily_expenses = business_manager.revenue_calculator.calculate_daily_expenses(business)
+    net_profit = daily_revenue - daily_expenses
+    
+    business_dict = business.to_dict()
+    business_dict['daily_revenue'] = daily_revenue
+    business_dict['daily_expenses'] = daily_expenses
+    business_dict['net_profit'] = net_profit
+    business_dict['config'] = BUSINESS_CONFIGS[business.business_type]
+    
+    return jsonify(business_dict)
+
+
+@app.route('/api/business/<business_id>/hire', methods=['POST'])
+@limiter.limit("10 per minute")
+def hire_employee(business_id):
+    """Нанять сотрудника"""
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    user_id = data.get('user_id')
+    employee_type_str = data.get('employee_type')
+    
+    if not user_id or not employee_type_str:
+        return jsonify({"error": "Missing user_id or employee_type"}), 400
+    
+    try:
+        employee_type = EmployeeType(employee_type_str)
+    except ValueError:
+        return jsonify({"error": "Invalid employee_type"}), 400
+    
+    business = business_manager.get_business(business_id, user_id)
+    if not business:
+        return jsonify({"error": "Business not found"}), 404
+    
+    result = business_manager.employee_manager.hire_employee(business, employee_type)
+    
+    if not result.success:
+        return jsonify({"error": result.error}), 400
+    
+    # Сохраняем изменения
+    business_manager.repository.save_business(business)
+    
+    return jsonify({
+        "success": True,
+        "employee": result.data.to_dict(),
+        "business": business.to_dict(),
+        "message": f"Нанят {EMPLOYEE_CONFIGS[employee_type]['emoji']} {EMPLOYEE_CONFIGS[employee_type]['name']}"
+    })
+
+
+@app.route('/api/business/<business_id>/fire/<employee_id>', methods=['POST'])
+@limiter.limit("10 per minute")
+def fire_employee(business_id, employee_id):
+    """Уволить сотрудника"""
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    user_id = data.get('user_id')
+    
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+    
+    business = business_manager.get_business(business_id, user_id)
+    if not business:
+        return jsonify({"error": "Business not found"}), 404
+    
+    result = business_manager.employee_manager.fire_employee(business, employee_id)
+    
+    if not result.success:
+        return jsonify({"error": result.error}), 400
+    
+    # Сохраняем изменения
+    business_manager.repository.save_business(business)
+    
+    return jsonify({
+        "success": True,
+        "business": business.to_dict(),
+        "message": "Сотрудник уволен"
+    })
+
+
+@app.route('/api/business/<business_id>/buy-inventory', methods=['POST'])
+@limiter.limit("10 per minute")
+def buy_inventory(business_id):
+    """Купить запасы"""
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    user_id = data.get('user_id')
+    
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+    
+    business = business_manager.get_business(business_id, user_id)
+    if not business:
+        return jsonify({"error": "Business not found"}), 404
+    
+    user_funds = business_manager.repository.get_user_funds(user_id)
+    result = business_manager.inventory_manager.purchase_inventory(business, user_funds)
+    
+    if not result.success:
+        return jsonify({"error": result.error}), 400
+    
+    # Вычитаем деньги
+    business_manager.repository.update_user_funds(user_id, -result.data['cost'])
+    
+    # Сохраняем изменения
+    business_manager.repository.save_business(business)
+    
+    return jsonify({
+        "success": True,
+        "business": business.to_dict(),
+        "cost": result.data['cost'],
+        "message": f"Запасы пополнены! -{result.data['cost']}₽"
+    })
+
+
+@app.route('/api/business/<business_id>/upgrade', methods=['POST'])
+@limiter.limit("10 per minute")
+def purchase_upgrade(business_id):
+    """Купить улучшение"""
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    user_id = data.get('user_id')
+    upgrade_type_str = data.get('upgrade_type')
+    
+    if not user_id or not upgrade_type_str:
+        return jsonify({"error": "Missing user_id or upgrade_type"}), 400
+    
+    try:
+        upgrade_type = UpgradeType(upgrade_type_str)
+    except ValueError:
+        return jsonify({"error": "Invalid upgrade_type"}), 400
+    
+    business = business_manager.get_business(business_id, user_id)
+    if not business:
+        return jsonify({"error": "Business not found"}), 404
+    
+    user_funds = business_manager.repository.get_user_funds(user_id)
+    result = business_manager.upgrade_manager.purchase_upgrade(business, upgrade_type, user_funds)
+    
+    if not result.success:
+        return jsonify({"error": result.error}), 400
+    
+    # Вычитаем деньги
+    business_manager.repository.update_user_funds(user_id, -result.data['cost'])
+    
+    # Сохраняем изменения
+    business_manager.repository.save_business(business)
+    
+    return jsonify({
+        "success": True,
+        "upgrade": result.data['upgrade'].to_dict(),
+        "business": business.to_dict(),
+        "cost": result.data['cost'],
+        "message": f"Куплено улучшение: {UPGRADE_CONFIGS[upgrade_type]['emoji']} {UPGRADE_CONFIGS[upgrade_type]['name']}"
+    })
+
+
+@app.route('/api/business/<business_id>/sell', methods=['POST'])
+@limiter.limit("5 per minute")
+def sell_business(business_id):
+    """Продать бизнес"""
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    user_id = data.get('user_id')
+    
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+    
+    result = business_manager.sell_business(business_id, user_id)
+    
+    if not result.success:
+        return jsonify({"error": result.error}), 400
+    
+    return jsonify({
+        "success": True,
+        "sale_price": result.data['sale_price'],
+        "total_investment": result.data['total_investment'],
+        "message": f"Бизнес продан за {result.data['sale_price']}₽"
+    })
+
+
+@app.route('/api/business/<business_id>/repair', methods=['POST'])
+@limiter.limit("10 per minute")
+def repair_equipment(business_id):
+    """Отремонтировать оборудование"""
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    user_id = data.get('user_id')
+    event_id = data.get('event_id')
+    
+    if not user_id or not event_id:
+        return jsonify({"error": "Missing user_id or event_id"}), 400
+    
+    business = business_manager.get_business(business_id, user_id)
+    if not business:
+        return jsonify({"error": "Business not found"}), 404
+    
+    user_funds = business_manager.repository.get_user_funds(user_id)
+    result = business_manager.event_manager.resolve_event(business, event_id, "repair", user_funds)
+    
+    if not result.success:
+        return jsonify({"error": result.error}), 400
+    
+    # Вычитаем деньги
+    business_manager.repository.update_user_funds(user_id, -result.data['cost'])
+    
+    # Сохраняем изменения
+    business_manager.repository.save_business(business)
+    
+    return jsonify({
+        "success": True,
+        "business": business.to_dict(),
+        "cost": result.data['cost'],
+        "message": f"Оборудование отремонтировано! -{result.data['cost']}₽"
+    })
+
+
+@app.route('/api/business/configs', methods=['GET'])
+def get_business_configs():
+    """Получить конфигурации бизнесов"""
+    return jsonify({
+        "business_types": {k.value: v for k, v in BUSINESS_CONFIGS.items()},
+        "employee_types": {k.value: v for k, v in EMPLOYEE_CONFIGS.items()},
+        "upgrade_types": {k.value: v for k, v in UPGRADE_CONFIGS.items()},
+        "event_types": {k.value: v for k, v in EVENT_CONFIGS.items()}
+    })
+
 
 # ============================================
 # TELEGRAM BOT WEBHOOK
