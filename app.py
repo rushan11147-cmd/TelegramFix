@@ -23,6 +23,10 @@ from business_system import (
     UPGRADE_CONFIGS, EVENT_CONFIGS
 )
 
+# Import side jobs system
+from side_jobs_system import SideJobManager
+from side_jobs_config import SIDE_JOBS, CATEGORIES
+
 load_dotenv()
 
 # Настройка логирования
@@ -361,6 +365,9 @@ def save_user_data_safe(user_id, user_data):
 # Инициализируем Business Manager после определения функций
 business_repository = BusinessRepository(get_user_data_safe, save_user_data_safe)
 business_manager = BusinessManager(business_repository)
+
+# Инициализируем Side Jobs Manager
+side_jobs_manager = SideJobManager(get_user_data_safe, save_user_data_safe)
 
 
 # События игры
@@ -1892,6 +1899,9 @@ def next_day():
         # ОБРАБОТКА БИЗНЕСОВ - ежедневные операции
         business_report = business_manager.process_daily_operations(user_id)
         
+        # ГЕНЕРАЦИЯ НОВЫХ ПОДРАБОТОК
+        side_jobs_manager.reset_daily_jobs(user_id)
+        
         # Ежемесячные расходы и доходы (в начале каждого месяца - каждые 30 дней)
         passive_income = 0
         monthly_expenses = 0
@@ -2301,6 +2311,74 @@ def get_business_configs():
         "upgrade_types": {k.value: v for k, v in UPGRADE_CONFIGS.items()},
         "event_types": {k.value: v for k, v in EVENT_CONFIGS.items()}
     })
+
+
+# ============================================
+# SIDE JOBS API ENDPOINTS
+# ============================================
+
+@app.route('/api/side-jobs/list', methods=['GET'])
+def get_side_jobs():
+    """Получить список доступных подработок"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({"error": "user_id is required"}), 400
+        
+        jobs = side_jobs_manager.get_available_jobs(user_id)
+        
+        return jsonify({
+            "success": True,
+            "jobs": jobs
+        })
+    except Exception as e:
+        logger.error(f"Error getting side jobs: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/side-jobs/execute', methods=['POST'])
+@limiter.limit("20 per minute")
+def execute_side_job():
+    """Выполнить подработку"""
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({"error": "Invalid JSON data"}), 400
+        
+        user_id = data.get('user_id')
+        job_id = data.get('job_id')
+        
+        if not user_id or not job_id:
+            return jsonify({"error": "user_id and job_id are required"}), 400
+        
+        result = side_jobs_manager.execute_job(user_id, job_id)
+        
+        if not result.get('success'):
+            return jsonify(result), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error executing side job: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/side-jobs/stats', methods=['GET'])
+def get_side_jobs_stats():
+    """Получить статистику подработок"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({"error": "user_id is required"}), 400
+        
+        stats = side_jobs_manager.get_stats(user_id)
+        
+        return jsonify({
+            "success": True,
+            "stats": stats
+        })
+    except Exception as e:
+        logger.error(f"Error getting side jobs stats: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================

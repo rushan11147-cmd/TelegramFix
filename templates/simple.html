@@ -505,7 +505,7 @@
                     </button>
                 </div>
                 
-                <div class="nav-buttons" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="nav-buttons" style="grid-template-columns: repeat(4, 1fr);">
                     <button class="nav-btn" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); border-color: #ba4a00; padding: 10px;" onclick="buyFood()">
                         <span class="nav-btn-icon" style="font-size: 20px; margin-bottom: 2px;"><i class="fas fa-pizza-slice"></i></span>
                         <div style="font-size: 11px;">Еда -200₽</div>
@@ -513,6 +513,10 @@
                     <button class="nav-btn" style="background: linear-gradient(135deg, #16a085 0%, #138d75 100%); border-color: #117a65; padding: 10px;" onclick="takeRest()">
                         <span class="nav-btn-icon" style="font-size: 20px; margin-bottom: 2px;"><i class="fas fa-bed"></i></span>
                         <div style="font-size: 11px;">Отдых +20⚡</div>
+                    </button>
+                    <button class="nav-btn" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); border-color: #ca6f1e; padding: 10px;" onclick="showSideJobs()">
+                        <span class="nav-btn-icon" style="font-size: 20px; margin-bottom: 2px;"><i class="fas fa-briefcase-medical"></i></span>
+                        <div style="font-size: 11px;">Подработки</div>
                     </button>
                     <button class="nav-btn" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); border-color: #21618c; padding: 10px;" onclick="showSkills()">
                         <span class="nav-btn-icon" style="font-size: 20px; margin-bottom: 2px;"><i class="fas fa-star"></i></span>
@@ -597,6 +601,20 @@
                 <button class="close-btn" onclick="document.getElementById('businessModal').style.display='none'">×</button>
             </div>
             <div class="modal-body" id="businessList">
+                <div style="text-align: center; padding: 20px;">
+                    <p style="margin-bottom: 15px;">Загрузка...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="sideJobsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div style="font-size: 20px; font-weight: bold;"><i class="fas fa-briefcase-medical"></i> Подработки</div>
+                <button class="close-btn" onclick="document.getElementById('sideJobsModal').style.display='none'">×</button>
+            </div>
+            <div class="modal-body" id="sideJobsList">
                 <div style="text-align: center; padding: 20px;">
                     <p style="margin-bottom: 15px;">Загрузка...</p>
                 </div>
@@ -1932,6 +1950,116 @@
             } catch (error) {
                 console.error('Error selling business:', error);
                 showMessage('Ошибка продажи бизнеса!', false);
+            }
+        }
+        
+        // ============================================
+        // SIDE JOBS FUNCTIONS
+        // ============================================
+        
+        async function showSideJobs() {
+            try {
+                const response = await fetch(`/api/side-jobs/list?user_id=${userId}`);
+                const data = await response.json();
+                
+                const sideJobsList = document.getElementById('sideJobsList');
+                sideJobsList.innerHTML = '';
+                
+                if (data.success && data.jobs && data.jobs.length > 0) {
+                    // Группируем по категориям
+                    const categories = {
+                        'physical': { name: 'Физические', color: '#e74c3c', jobs: [] },
+                        'mental': { name: 'Умственные', color: '#3498db', jobs: [] },
+                        'creative': { name: 'Творческие', color: '#9b59b6', jobs: [] },
+                        'social': { name: 'Социальные', color: '#f39c12', jobs: [] }
+                    };
+                    
+                    data.jobs.forEach(job => {
+                        if (categories[job.category]) {
+                            categories[job.category].jobs.push(job);
+                        }
+                    });
+                    
+                    // Отображаем по категориям
+                    for (const catKey in categories) {
+                        const cat = categories[catKey];
+                        if (cat.jobs.length === 0) continue;
+                        
+                        const catHeader = document.createElement('div');
+                        catHeader.style.cssText = `padding: 10px; background: ${cat.color}; color: white; font-weight: bold; border-radius: 8px; margin: 10px 0 5px 0;`;
+                        catHeader.textContent = cat.name;
+                        sideJobsList.appendChild(catHeader);
+                        
+                        cat.jobs.forEach(job => {
+                            const card = document.createElement('div');
+                            card.className = 'item-card';
+                            if (job.completed) {
+                                card.style.opacity = '0.5';
+                            }
+                            
+                            const successRate = job.final_success_rate || job.success_rate || 0.5;
+                            const successPercent = Math.round(successRate * 100);
+                            const successColor = successPercent >= 80 ? '#27ae60' : successPercent >= 60 ? '#f39c12' : '#e74c3c';
+                            const payment = job.final_payment || job.base_payment || 0;
+                            
+                            card.innerHTML = `
+                                <div class="item-header">
+                                    <div class="item-icon">${job.emoji}</div>
+                                    <div class="item-name">${job.name}</div>
+                                    <div class="item-price">+${payment}₽</div>
+                                </div>
+                                <div class="item-desc">${job.description}</div>
+                                <div class="item-desc" style="margin-top: 8px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                        <span>⚡ Энергия: ${job.energy_cost}</span>
+                                        <span style="color: ${successColor};">📊 Шанс: ${successPercent}%</span>
+                                    </div>
+                                    ${job.completed ? 
+                                        '<div style="text-align: center; padding: 8px; background: #95a5a6; color: white; border-radius: 6px; margin-top: 8px;">✓ Выполнено</div>' :
+                                        `<button onclick="executeSideJob('${job.id}')" style="width: 100%; padding: 10px; background: ${cat.color}; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 8px;">
+                                            Выполнить
+                                        </button>`
+                                    }
+                                </div>
+                            `;
+                            sideJobsList.appendChild(card);
+                        });
+                    }
+                } else {
+                    sideJobsList.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;"><p>Нет доступных подработок</p></div>';
+                }
+                
+                document.getElementById('sideJobsModal').style.display = 'flex';
+            } catch (error) {
+                console.error('Error loading side jobs:', error);
+                showMessage('Ошибка загрузки подработок!', false);
+            }
+        }
+        
+        async function executeSideJob(jobId) {
+            try {
+                const response = await fetch('/api/side-jobs/execute', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: userId,
+                        job_id: jobId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    gameData = data.user;
+                    updateUI();
+                    showMessage(data.message, data.job_success);
+                    await showSideJobs(); // Обновляем список
+                } else {
+                    showMessage(data.error || 'Ошибка выполнения подработки', false);
+                }
+            } catch (error) {
+                console.error('Error executing side job:', error);
+                showMessage('Ошибка выполнения подработки!', false);
             }
         }
         
