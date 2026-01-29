@@ -27,6 +27,9 @@ from business_system import (
 from side_jobs_system import SideJobManager
 from side_jobs_config import SIDE_JOBS, CATEGORIES
 
+# Import entertainment system
+from entertainment_system import EntertainmentManager
+
 load_dotenv()
 
 # Настройка логирования
@@ -374,6 +377,9 @@ business_manager = BusinessManager(business_repository)
 
 # Инициализируем Side Jobs Manager
 side_jobs_manager = SideJobManager(get_user_data_safe, save_user_data_safe)
+
+# Инициализируем Entertainment Manager
+entertainment_manager = EntertainmentManager(get_user_data_safe, save_user_data_safe)
 
 
 # События игры
@@ -2388,6 +2394,115 @@ def get_side_jobs_stats():
         })
     except Exception as e:
         logger.error(f"Error getting side jobs stats: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================
+# ENTERTAINMENT SYSTEM API
+# ============================================
+
+@app.route('/api/entertainment/roulette', methods=['POST'])
+@limiter.limit("20 per minute")
+def play_roulette_entertainment():
+    """Играть в рулетку"""
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({"error": "Invalid JSON data"}), 400
+        
+        user_id = data.get('user_id')
+        bet = data.get('bet')
+        
+        if not user_id or bet is None:
+            return jsonify({"error": "user_id and bet are required"}), 400
+        
+        logger.info(f"Playing roulette: user={user_id}, bet={bet}")
+        
+        result = entertainment_manager.play_roulette(user_id, bet)
+        
+        if not result.get('success'):
+            return jsonify(result), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error playing roulette: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/entertainment/dice', methods=['POST'])
+@limiter.limit("20 per minute")
+def play_dice_entertainment():
+    """Играть в кости"""
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({"error": "Invalid JSON data"}), 400
+        
+        user_id = data.get('user_id')
+        bet = data.get('bet')
+        choice = data.get('choice')
+        
+        if not user_id or bet is None or not choice:
+            return jsonify({"error": "user_id, bet and choice are required"}), 400
+        
+        logger.info(f"Playing dice: user={user_id}, bet={bet}, choice={choice}")
+        
+        result = entertainment_manager.play_dice(user_id, bet, choice)
+        
+        if not result.get('success'):
+            return jsonify(result), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error playing dice: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/entertainment/crash', methods=['POST'])
+@limiter.limit("20 per minute")
+def play_crash_entertainment():
+    """Играть в краш"""
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({"error": "Invalid JSON data"}), 400
+        
+        user_id = data.get('user_id')
+        bet = data.get('bet')
+        cash_out_multiplier = data.get('cash_out_multiplier')  # Может быть None
+        
+        if not user_id or bet is None:
+            return jsonify({"error": "user_id and bet are required"}), 400
+        
+        logger.info(f"Playing crash: user={user_id}, bet={bet}, cash_out={cash_out_multiplier}")
+        
+        result = entertainment_manager.play_crash(user_id, bet, cash_out_multiplier)
+        
+        if not result.get('success'):
+            return jsonify(result), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error playing crash: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/entertainment/stats', methods=['GET'])
+def get_entertainment_stats():
+    """Получить статистику развлечений"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({"error": "user_id is required"}), 400
+        
+        result = entertainment_manager.get_statistics(user_id)
+        
+        if not result.get('success'):
+            return jsonify(result), 400
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error getting entertainment stats: {e}")
         return jsonify({"error": str(e)}), 500
 
 
