@@ -1959,6 +1959,9 @@
         
         async function showSideJobs() {
             try {
+                // ВАЖНО: Перезагружаем данные пользователя перед открытием
+                await loadUserData();
+                
                 const response = await fetch(`/api/side-jobs/list?user_id=${userId}`);
                 const data = await response.json();
                 
