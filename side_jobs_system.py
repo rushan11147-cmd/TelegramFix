@@ -101,6 +101,7 @@ class SideJobManager:
         Returns:
             Результат выполнения
         """
+        # ВАЖНО: Загружаем свежие данные пользователя из БД
         user = self.get_user(user_id)
         if not user:
             return {'success': False, 'error': 'Пользователь не найден'}
@@ -123,12 +124,16 @@ class SideJobManager:
         
         job = SIDE_JOBS[job_id]
         
-        # Проверяем энергию
+        # Проверяем энергию (используем актуальное значение из БД)
         current_energy = user.get('energy', 0)
-        if current_energy < job['energy_cost']:
+        required_energy = job['energy_cost']
+        
+        print(f"DEBUG: User {user_id} - Current energy: {current_energy}, Required: {required_energy}")
+        
+        if current_energy < required_energy:
             return {
                 'success': False,
-                'error': f'Недостаточно энергии (нужно {job["energy_cost"]}, есть {current_energy})'
+                'error': f'Недостаточно энергии (нужно {required_energy}, есть {current_energy})'
             }
         
         # Списываем энергию

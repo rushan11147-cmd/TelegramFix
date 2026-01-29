@@ -2351,7 +2351,11 @@ def execute_side_job():
         if not user_id or not job_id:
             return jsonify({"error": "user_id and job_id are required"}), 400
         
+        logger.info(f"Executing side job: user={user_id}, job={job_id}")
+        
         result = side_jobs_manager.execute_job(user_id, job_id)
+        
+        logger.info(f"Side job result: success={result.get('success')}, error={result.get('error')}")
         
         if not result.get('success'):
             return jsonify(result), 400
