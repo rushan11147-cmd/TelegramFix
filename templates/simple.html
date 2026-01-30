@@ -782,28 +782,30 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div style="font-size: 20px; font-weight: bold;"><i class="fas fa-chart-line"></i> Краш</div>
-                <button class="close-btn" onclick="document.getElementById('crashModal').style.display='none'">×</button>
+                <button class="close-btn" onclick="document.getElementById('crashModal').style.display='none'; stopCrashGame()">×</button>
             </div>
             <div class="modal-body" style="text-align: center;">
                 <!-- Множитель -->
                 <div style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border-radius: 20px; padding: 40px 20px; margin: 20px 0; border: 4px solid #e74c3c; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
                     <div id="crashMultiplier" style="font-size: 60px; font-weight: bold; color: #27ae60; margin-bottom: 15px;">x1.00</div>
-                    <div id="crashMessage" style="font-size: 18px; font-weight: bold; color: #f39c12; min-height: 25px;"></div>
+                    <div id="crashMessage" style="font-size: 18px; font-weight: bold; color: #f39c12; min-height: 25px;">📈 Установи ставку</div>
                 </div>
                 
-                <div style="font-size: 16px; margin: 15px 0; color: #555;">
+                <div id="crashBetInput" style="font-size: 16px; margin: 15px 0; color: #555;">
                     <div style="margin-bottom: 10px;">Ставка: <input type="number" id="crashBet" min="100" max="5000" value="100" style="width: 120px; padding: 5px; border: 2px solid #8b7355; border-radius: 5px; text-align: center; font-size: 16px;">₽</div>
-                    <div style="margin-bottom: 10px;">Забрать на: <input type="number" id="crashTarget" min="1.1" max="10" step="0.1" value="2.0" style="width: 120px; padding: 5px; border: 2px solid #8b7355; border-radius: 5px; text-align: center; font-size: 16px;">x</div>
                 </div>
                 
                 <div style="display: flex; gap: 10px; justify-content: center; margin: 20px 0;">
-                    <button class="nav-btn" id="crashPlayBtn" style="padding: 15px 25px; background: linear-gradient(135deg, #27ae60 0%, #229954 100%); border-color: #1e8449; font-size: 16px;" onclick="playCrash()">
+                    <button class="nav-btn" id="crashPlayBtn" style="padding: 15px 25px; background: linear-gradient(135deg, #27ae60 0%, #229954 100%); border-color: #1e8449; font-size: 16px;" onclick="startCrashGame()">
                         🚀 Играть
+                    </button>
+                    <button class="nav-btn" id="crashCashOutBtn" style="padding: 15px 25px; background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); border-color: #ca6f1e; font-size: 16px; display: none;" onclick="cashOutCrash()">
+                        💰 Забрать
                     </button>
                 </div>
                 <div style="font-size: 13px; color: #888; margin-top: 10px;">
                     💡 Множитель растет от x1.0 до краша<br>
-                    Забери до краша и выиграй!
+                    Нажми "Забрать" до краша и выиграй!
                 </div>
             </div>
         </div>
@@ -1346,107 +1348,185 @@
             document.getElementById('entertainmentModal').style.display = 'none';
             document.getElementById('crashMultiplier').textContent = 'x1.00';
             document.getElementById('crashMultiplier').style.color = '#27ae60';
-            document.getElementById('crashMessage').textContent = '📈 Установи ставку и цель';
+            document.getElementById('crashMessage').textContent = '📈 Установи ставку';
             document.getElementById('crashBet').value = 100;
-            document.getElementById('crashTarget').value = 2.0;
             document.getElementById('crashPlayBtn').disabled = false;
+            document.getElementById('crashPlayBtn').style.display = 'block';
+            document.getElementById('crashCashOutBtn').style.display = 'none';
+            document.getElementById('crashBetInput').style.display = 'block';
             document.getElementById('crashModal').style.display = 'flex';
         }
         
-        async function playCrash(retryCount = 0) {
+        let crashInterval = null;
+        let crashPoint = 0;
+        let currentCrashMultiplier = 1.0;
+        let crashBetAmount = 0;
+        let crashStarted = false;
+        
+        function startCrashGame() {
+            const bet = parseInt(document.getElementById('crashBet').value);
+            
+            if (bet < 100 || bet > 5000) {
+                showMessage('Ставка должна быть 100-5000₽', false);
+                return;
+            }
+            
+            if (gameData.money < bet) {
+                showMessage('Недостаточно денег!', false);
+                return;
+            }
+            
+            // Списываем ставку
+            gameData.money -= bet;
+            crashBetAmount = bet;
+            updateUI();
+            
+            // Генерируем точку краша (на клиенте для плавной анимации)
+            crashPoint = generateCrashPoint();
+            
+            // Скрываем поле ставки и кнопку "Играть"
+            document.getElementById('crashBetInput').style.display = 'none';
+            document.getElementById('crashPlayBtn').style.display = 'none';
+            document.getElementById('crashCashOutBtn').style.display = 'block';
+            document.getElementById('crashCashOutBtn').disabled = false;
+            
+            const multiplierEl = document.getElementById('crashMultiplier');
+            const messageEl = document.getElementById('crashMessage');
+            
+            currentCrashMultiplier = 1.0;
+            crashStarted = true;
+            messageEl.textContent = '📈 Множитель растет... Нажми "Забрать"!';
+            messageEl.style.color = '#f39c12';
+            
+            // Анимация роста множителя
+            crashInterval = setInterval(function() {
+                if (!crashStarted) {
+                    clearInterval(crashInterval);
+                    return;
+                }
+                
+                currentCrashMultiplier += 0.02 + (currentCrashMultiplier * 0.01); // Ускоряется со временем
+                multiplierEl.textContent = `x${currentCrashMultiplier.toFixed(2)}`;
+                
+                // Меняем цвет по мере роста
+                if (currentCrashMultiplier >= 5) {
+                    multiplierEl.style.color = '#f39c12';
+                } else if (currentCrashMultiplier >= 3) {
+                    multiplierEl.style.color = '#3498db';
+                }
+                
+                // Проверяем краш
+                if (currentCrashMultiplier >= crashPoint) {
+                    clearInterval(crashInterval);
+                    crashGame(false);
+                }
+            }, 100);
+        }
+        
+        function generateCrashPoint() {
+            // Генерируем точку краша (экспоненциальное распределение)
+            const random = Math.random();
+            let point = 1.0 + (-Math.log(1 - random) * 0.5);
+            
+            // Учитываем удачу
+            const luckLevel = gameData.skills?.luck || 1;
+            point *= (1 + (luckLevel - 1) * 0.1);
+            
+            // Ограничиваем диапазон
+            point = Math.max(1.1, Math.min(10.0, point));
+            
+            return point;
+        }
+        
+        function cashOutCrash() {
+            if (!crashStarted) return;
+            
+            clearInterval(crashInterval);
+            crashGame(true);
+        }
+        
+        async function crashGame(cashedOut) {
+            crashStarted = false;
+            
+            const multiplierEl = document.getElementById('crashMultiplier');
+            const messageEl = document.getElementById('crashMessage');
+            const cashOutBtn = document.getElementById('crashCashOutBtn');
+            
+            cashOutBtn.disabled = true;
+            
             try {
-                const bet = parseInt(document.getElementById('crashBet').value);
-                const target = parseFloat(document.getElementById('crashTarget').value);
-                
-                if (bet < 100 || bet > 5000) {
-                    showMessage('Ставка должна быть 100-5000₽', false);
-                    return;
-                }
-                
-                if (target < 1.1 || target > 10) {
-                    showMessage('Цель должна быть x1.1-x10.0', false);
-                    return;
-                }
-                
-                const multiplierEl = document.getElementById('crashMultiplier');
-                const messageEl = document.getElementById('crashMessage');
-                const playBtn = document.getElementById('crashPlayBtn');
-                
-                playBtn.disabled = true;
-                messageEl.textContent = '📈 Множитель растет...';
-                messageEl.style.color = '#f39c12';
-                
-                // Анимация роста множителя
-                let currentMultiplier = 1.0;
-                const interval = setInterval(function() {
-                    currentMultiplier += 0.05;
-                    multiplierEl.textContent = `x${currentMultiplier.toFixed(2)}`;
-                    
-                    if (currentMultiplier >= target) {
-                        multiplierEl.style.color = '#f39c12';
-                    }
-                    
-                    if (currentMultiplier >= 10) {
-                        clearInterval(interval);
-                    }
-                }, 100);
-                
+                // Отправляем результат на сервер
                 const response = await fetch('/api/entertainment/crash', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         user_id: userId, 
-                        bet: bet, 
-                        cash_out_multiplier: target 
+                        bet: crashBetAmount, 
+                        cash_out_multiplier: cashedOut ? currentCrashMultiplier : null
                     })
                 });
                 
-                setTimeout(async function() {
-                    clearInterval(interval);
+                if (response.ok) {
+                    const result = await response.json();
+                    gameData = result.user;
+                    updateUI();
                     
-                    if (response.ok) {
-                        const result = await response.json();
-                        gameData = result.user;
-                        updateUI();
-                        
-                        // Показываем результат
-                        const crashPoint = result.result.crash_point;
-                        multiplierEl.textContent = `x${crashPoint.toFixed(2)}`;
-                        
-                        if (result.result.cashed_out) {
-                            multiplierEl.style.color = '#27ae60';
-                            messageEl.textContent = result.message;
-                            messageEl.style.color = '#27ae60';
-                        } else {
-                            multiplierEl.style.color = '#e74c3c';
-                            messageEl.textContent = result.message;
-                            messageEl.style.color = '#e74c3c';
-                        }
-                        
-                        showMessage(result.message, result.result.cashed_out);
-                        playBtn.disabled = false;
+                    if (cashedOut) {
+                        multiplierEl.style.color = '#27ae60';
+                        messageEl.textContent = `✅ Забрал на x${currentCrashMultiplier.toFixed(2)}! +${result.result.payout}₽`;
+                        messageEl.style.color = '#27ae60';
+                        showMessage(result.message, true);
                     } else {
-                        const error = await response.json();
-                        messageEl.textContent = error.error || 'Ошибка!';
-                        messageEl.style.color = '#e74c3c';
+                        multiplierEl.textContent = `x${crashPoint.toFixed(2)}`;
                         multiplierEl.style.color = '#e74c3c';
-                        showMessage(error.error || 'Ошибка!', false);
-                        playBtn.disabled = false;
+                        messageEl.textContent = `❌ Краш на x${crashPoint.toFixed(2)}!`;
+                        messageEl.style.color = '#e74c3c';
+                        showMessage(`Краш на x${crashPoint.toFixed(2)}!`, false);
                     }
-                }, 2000);
+                } else {
+                    const error = await response.json();
+                    // Возвращаем деньги при ошибке
+                    gameData.money += crashBetAmount;
+                    updateUI();
+                    messageEl.textContent = error.error || 'Ошибка!';
+                    messageEl.style.color = '#e74c3c';
+                    showMessage(error.error || 'Ошибка!', false);
+                }
             } catch (error) {
                 console.error('Ошибка краша:', error);
-                
-                if (retryCount < 2) {
-                    document.getElementById('crashMessage').textContent = `🔄 Переподключение... ${retryCount + 1}/2`;
-                    document.getElementById('crashMessage').style.color = '#f39c12';
-                    setTimeout(() => playCrash(retryCount + 1), 2000);
-                } else {
-                    document.getElementById('crashMessage').textContent = '❌ Ошибка соединения!';
-                    document.getElementById('crashMessage').style.color = '#e74c3c';
-                    document.getElementById('crashPlayBtn').disabled = false;
-                    showMessage('❌ Ошибка соединения!', false);
-                }
+                // Возвращаем деньги при ошибке
+                gameData.money += crashBetAmount;
+                updateUI();
+                messageEl.textContent = '❌ Ошибка соединения!';
+                messageEl.style.color = '#e74c3c';
+                showMessage('❌ Ошибка соединения!', false);
+            }
+            
+            // Показываем кнопку "Играть" снова через 2 секунды
+            setTimeout(() => {
+                document.getElementById('crashBetInput').style.display = 'block';
+                document.getElementById('crashPlayBtn').style.display = 'block';
+                document.getElementById('crashPlayBtn').disabled = false;
+                document.getElementById('crashCashOutBtn').style.display = 'none';
+                multiplierEl.textContent = 'x1.00';
+                multiplierEl.style.color = '#27ae60';
+                messageEl.textContent = '📈 Установи ставку';
+                messageEl.style.color = '#f39c12';
+            }, 2000);
+        }
+        
+        function stopCrashGame() {
+            if (crashInterval) {
+                clearInterval(crashInterval);
+                crashInterval = null;
+            }
+            crashStarted = false;
+            
+            // Возвращаем деньги если игра была прервана
+            if (crashBetAmount > 0) {
+                gameData.money += crashBetAmount;
+                crashBetAmount = 0;
+                updateUI();
             }
         }
         
