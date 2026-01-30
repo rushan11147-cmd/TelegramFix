@@ -1950,19 +1950,26 @@ def next_day():
             
             # Платежи по кредитам
             expired_credits = []
-            for i, credit in enumerate(user.get('credits', [])):
-                monthly_expenses += credit['monthly_payment']
+            credits_list = user.get('credits', [])
+            for i, credit in enumerate(credits_list):
+                monthly_expenses += credit.get('monthly_payment', 0)
                 credit['remaining_months'] -= 1
                 
                 if credit['remaining_months'] <= 0:
                     expired_credits.append(i)
             
-            # Удаляем погашенные кредиты
+            # Удаляем погашенные кредиты (в обратном порядке чтобы не сбить индексы)
             for i in reversed(expired_credits):
-                user['credits'].pop(i)
+                if i < len(user['credits']):
+                    user['credits'].pop(i)
             
             # Применяем пассивный доход и расходы
             user['money'] += passive_income - monthly_expenses
+            
+            # Если кредитов больше нет, но они были - можно получить достижение
+            if len(user.get('credits', [])) == 0 and user.get('had_credits', False):
+                # Проверяем достижение "Без долгов"
+                pass
         
         # Ежедневные траты (еда, транспорт)
         daily_cost = random.randint(200, 500)
