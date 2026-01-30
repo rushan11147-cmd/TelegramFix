@@ -1,0 +1,4 @@
+# file: C:\Users\1\Desktop\Проект Бот Телеграм\balance_config.py
+# hypothesis_version: 6.151.4
+
+[0.2, 0.25, 0.4, 0.5, 0.7, 1.0, 1.5, 2.0, 120, 150, 200, 300, 400, 450, 500, 600, 800, 1200, 1500, 3000, 3001, 10000, 10001, 'auto_cleanup', 'base', 'collector_percentage', 'crypto', 'days_to_debt_500', 'days_to_negative', 'debt_3_days', 'delivery', 'description', 'emoji', 'equipment_breakdown', 'fine', 'food', 'freelance', 'inf', 'max', 'max_cost', 'max_days', 'medical_emergency', 'middle', 'min', 'min_cost', 'multiplier', 'name', 'office', 'poor', 'rich', 'transport', 'unexpected_bill', 'Бедный', 'Богатый', 'Медицинская помощь', 'Неожиданный счет', 'Поломка техники', 'Средний класс', 'Штраф', '🏥', '💎', '💰', '💸', '💻', '📄', '🚔']

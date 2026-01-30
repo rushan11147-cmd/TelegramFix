@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Выживи до зарплаты</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('/static/game-background.jpg.jpg') center center / cover no-repeat fixed;
+            color: #2c3e50;
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+        
+        /* Верхняя панель - синяя с закругленными углами */
+        .top-bar {
+            background: linear-gradient(135deg, #2c5f8d 0%, #1e4266 100%);
+            border-radius: 20px;
+            padding: 12px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .top-bar-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        /* Основная область */
+        .main-area {
+            flex: 1;
+            display: flex;
+            gap: 15px;
+            align-items: stretch;
+        }
+        
+        /* Персонаж слева */
+        .character-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Панель справа с бежевой рамкой */
+        .game-panel {
+            width: 380px;
+            background: linear-gradient(135deg, #f5f0e8 0%, #e8dcc0 100%);
+            border-radius: 25px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            border: 6px solid #d4c4a0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        /* Прогресс-бары горизонтальные */
+        .stat-bar {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            border-radius: 15px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+        
+        .stat-bar.mood {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+        }
+        
+        .stat-bar.health {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        
+        .stat-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .stat-bar-icon {
+            font-size: 20px;
+        }
+        
+        /* Кнопки в один столбец */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .action-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 15px;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        
+        .action-btn:active {
+            transform: scale(0.98);
+        }
+        
+        /* Коричневая кнопка "Работа" */
+        .action-btn.work {
+            background: linear-gradient(135deg, #8b4513 0%, #654321 100%);
+        }
+        
+        /* Оранжевая кнопка "Подработки" */
+        .action-btn.sidejob {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+        
+        /* Синяя кнопка "Развлечения" */
+        .action-btn.entertainment {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+        
+        /* Зелёная кнопка "Поработать" */
+        .action-btn.do-work {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+        
+        /* Красная кнопка "Закончить день" */
+        .action-btn.end-day {
+            background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+        }
+        
+        .job-info-card {
+            background: rgba(139, 69, 19, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            border: 2px solid rgba(139, 69, 19, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .main-area {
+                flex-direction: column;
+            }
+            
+            .character-area {
+                display: none;
+            }
+            
+            .game-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Верхняя синяя панель -->
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <span>Месяц <span id="month">1</span> | День <span id="day">1</span> / 30</span>
+            </div>
+            <div class="top-bar-right">
+                <span>💰 <span id="topMoney">282</span>₽</span>
+                <button class="top-bar-btn" onclick="showLeaderboard()"><i class="fas fa-trophy"></i></button>
+                <button class="top-bar-btn" onclick="showStats()"><i class="fas fa-list"></i></button>
+            </div>
+        </div>
+        
+        <div class="main-area">
+            <!-- Персонаж слева (на фоне) -->
+            <div class="character-area">
+                <!-- Персонаж виден на фоне -->
+            </div>
+            
+            <!-- Панель справа -->
+            <div class="game-panel">
+                <!-- Деньги -->
+                <div class="stat-bar">
+                    <div class="stat-bar-left">
+                        <span class="stat-bar-icon">💰</span>
+                        <span id="money">282</span> ₽
+                    </div>
+                    <div>
+                        <span id="energyDisplay">100/100</span> +
+                    </div>
+                </div>
+                
+                <!-- Настроение -->
+                <div class="stat-bar mood">
+                    <div class="stat-bar-left">
+                        <span class="stat-bar-icon" id="moodEmoji">😊</span>
+                        <span id="moodValue">50</span>
+                    </div>
+                    <div id="moodText">Нормально</div>
+                </div>
+                
+                <!-- Здоровье -->
+                <div class="stat-bar health">
+                    <div class="stat-bar-left">
+                        <span class="stat-bar-icon">❤️</span>
+                        <span id="healthValue">100</span>
+                    </div>
+                    <div id="healthText">Здоров</div>
+                </div>
+                
+                <!-- Кнопки 1x3 -->
+                <div class="action-buttons" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                    <button class="action-btn work" style="padding: 12px 8px; font-size: 13px;" onclick="showJobs()">
+                        <i class="fas fa-briefcase"></i> Работа
+                    </button>
+                    <button class="action-btn" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); padding: 12px 8px; font-size: 13px;" onclick="showShop()">
+                        <i class="fas fa-shopping-cart"></i> Магазин
+                    </button>
+                    <button class="action-btn" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); padding: 12px 8px; font-size: 13px;" onclick="showGoals()">
+                        <i class="fas fa-trophy"></i> Цели
+                    </button>
+                </div>
+                
+                <!-- Информация о работе -->
+                <div class="job-info-card">
+                    <div style="font-weight: bold; margin-bottom: 5px;">Твоя работа: <span id="currentJobName">Курьер</span></div>
+                    <div style="font-size: 13px; color: #666;">
+                        💰 Зарплата: +<span id="jobIncome">80</span>₽ | ⚡ Энергия: -<span id="jobEnergy">5</span>
+                    </div>
+                </div>
+                
+                <!-- Кнопки действий -->
+                <div class="action-buttons">
+                    <button class="action-btn work" onclick="showJobs()">
+                        <i class="fas fa-briefcase"></i> Работа
+                    </button>
+                    
+                    <button class="action-btn sidejob" onclick="showSideJobs()">
+                        <i class="fas fa-clock"></i> Подработки
+                    </button>
+                    
+                    <button class="action-btn entertainment" onclick="showEntertainment()">
+                        <i class="fas fa-gamepad"></i> Развлечения
+                        <span style="font-size: 12px;">-50₽ Энергия: +20</span>
+                    </button>
+                    
+                    <button class="action-btn do-work" id="workBtn" onclick="work()">
+                        <i class="fas fa-briefcase"></i> Поработать
+                    </button>
+                    
+                    <button class="action-btn end-day" id="nextDayBtn" onclick="confirmEndDay()">
+                        <i class="fas fa-moon"></i> Закончить день и отдохнуть
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Весь JavaScript код остается таким же как в simple.html
+        let userId = localStorage.getItem('userId');
+        if (!userId) {
+            userId = 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('userId', userId);
+        }
+        
+        let gameData = {};
+        
+        async function loadUserData() {
+            try {
+                const response = await fetch('/api/user/' + userId);
+                if (response.ok) {
+                    gameData = await response.json();
+                    updateUI();
+                }
+            } catch (error) {
+                console.error('Load error:', error);
+            }
+        }
+        
+        function updateUI() {
+            document.getElementById('day').textContent = gameData.day || 1;
+            document.getElementById('month').textContent = gameData.month || 1;
+            document.getElementById('money').textContent = gameData.money || 282;
+            document.getElementById('topMoney').textContent = gameData.money || 282;
+            
+            const currentEnergy = gameData.energy || 100;
+            const maxEnergy = gameData.max_energy || 100;
+            document.getElementById('energyDisplay').textContent = currentEnergy + '/' + maxEnergy;
+            
+            const mood = gameData.mood || 50;
+            document.getElementById('moodValue').textContent = mood;
+            
+            let moodEmoji = '😐';
+            let moodText = 'Нормально';
+            if (mood <= 20) {
+                moodEmoji = '😭';
+                moodText = 'Депрессия';
+            } else if (mood <= 40) {
+                moodEmoji = '😔';
+                moodText = 'Грустно';
+            } else if (mood <= 60) {
+                moodEmoji = '😐';
+                moodText = 'Нормально';
+            } else if (mood <= 80) {
+                moodEmoji = '🙂';
+                moodText = 'Хорошо';
+            } else {
+                moodEmoji = '😄';
+                moodText = 'Отлично';
+            }
+            document.getElementById('moodEmoji').textContent = moodEmoji;
+            document.getElementById('moodText').textContent = moodText;
+            
+            const health = gameData.health || 100;
+            document.getElementById('healthValue').textContent = health;
+            
+            let healthText = 'Здоров';
+            if (health <= 20) {
+                healthText = 'Критично';
+            } else if (health <= 40) {
+                healthText = 'Плохо';
+            } else if (health <= 60) {
+                healthText = 'Устал';
+            } else if (health <= 80) {
+                healthText = 'Нормально';
+            }
+            document.getElementById('healthText').textContent = healthText;
+            
+            const jobs = {
+                'delivery': { name: 'Доставка еды', income: 80, energy: 5 },
+                'office': { name: 'Офисная работа', income: 120, energy: 3 },
+                'freelance': { name: 'Фриланс', income: 200, energy: 7 },
+                'crypto': { name: 'Крипто-трейдинг', income: 300, energy: 10 }
+            };
+            
+            const currentJobId = gameData.current_job || 'delivery';
+            const currentJob = jobs[currentJobId];
+            if (currentJob) {
+                document.getElementById('currentJobName').textContent = currentJob.name;
+                document.getElementById('jobIncome').textContent = currentJob.income;
+                document.getElementById('jobEnergy').textContent = currentJob.energy;
+            }
+        }
+        
+        async function work() {
+            try {
+                const response = await fetch('/api/work', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    gameData = result.user;
+                    updateUI();
+                    alert('+' + result.income + '₽');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        async function confirmEndDay() {
+            if (confirm('Закончить день?')) {
+                try {
+                    const response = await fetch('/api/next_day', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: userId })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        gameData = result.user;
+                        updateUI();
+                        alert('Новый день!');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
+        }
+        
+        function showJobs() {
+            alert('Открыть меню работы');
+        }
+        
+        function showShop() {
+            alert('Открыть магазин');
+        }
+        
+        function showGoals() {
+            alert('Открыть цели');
+        }
+        
+        function showSideJobs() {
+            alert('Открыть подработки');
+        }
+        
+        function showEntertainment() {
+            alert('Открыть развлечения');
+        }
+        
+        function showLeaderboard() {
+            alert('Открыть таблицу лидеров');
+        }
+        
+        function showStats() {
+            alert('Открыть статистику');
+        }
+        
+        loadUserData();
+    </script>
+</body>
+</html>

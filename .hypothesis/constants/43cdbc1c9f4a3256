@@ -1,0 +1,4 @@
+# file: C:\Users\1\Desktop\Проект Бот Телеграм\skills_system.py
+# hypothesis_version: 6.151.4
+
+[0.0, 'available', 'base_cost', 'bonus_percentage', 'branch', 'branch_description', 'branch_emoji', 'branch_name', 'branches', 'can_reset', 'can_upgrade', 'completed', 'cost', 'current_level', 'days_until_reset', 'description', 'effects', 'emoji', 'error', 'error_message', 'locked', 'max_level', 'message', 'name', 'new_balance', 'new_level', 'new_star_balance', 'next_award_day', 'next_reset_day', 'prerequisites', 'skill_id', 'skills', 'star_balance', 'star_history', 'stars_awarded', 'stars_refunded', 'stars_spent', 'status', 'status_icon', 'success', 'total_stars_spent', 'unavailable', 'Ежемесячная зарплата', '✅', '✨', '⭐', '🔒']

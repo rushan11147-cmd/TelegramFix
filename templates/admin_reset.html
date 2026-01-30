@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сброс базы данных - Админ</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #e74c3c;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        
+        .warning strong {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: scale(1.02);
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚠️ Сброс базы данных</h1>
+        
+        <div class="warning">
+            <strong>ВНИМАНИЕ!</strong>
+            Это действие удалит ВСЕХ пользователей из базы данных!<br>
+            Все игроки потеряют свой прогресс и начнут игру заново!<br>
+            <br>
+            <strong>Это действие необратимо!</strong>
+        </div>
+        
+        <label for="password" style="display: block; margin-bottom: 10px; font-weight: bold;">
+            Пароль администратора:
+        </label>
+        <input 
+            type="password" 
+            id="password" 
+            placeholder="Введите пароль администратора"
+            autocomplete="off"
+        >
+        
+        <button id="resetBtn" onclick="resetDatabase()">
+            🗑️ Сбросить базу данных
+        </button>
+        
+        <div id="result" class="result"></div>
+        
+        <a href="/" class="back-link">← Вернуться к игре</a>
+    </div>
+    
+    <script>
+        async function resetDatabase() {
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            const resetBtn = document.getElementById('resetBtn');
+            
+            if (!password) {
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.textContent = '❌ Введите пароль!';
+                return;
+            }
+            
+            if (!confirm('Вы УВЕРЕНЫ? Это удалит ВСЕХ пользователей!')) {
+                return;
+            }
+            
+            if (!confirm('ПОСЛЕДНЕЕ ПРЕДУПРЕЖДЕНИЕ! Все данные будут потеряны!')) {
+                return;
+            }
+            
+            resetBtn.disabled = true;
+            resetBtn.textContent = '⏳ Сброс...';
+            resultDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/admin/reset_database', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password: password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <strong>✅ Успешно!</strong><br>
+                        ${data.message}<br>
+                        <br>
+                        Все пользователи начнут игру заново.
+                    `;
+                    document.getElementById('password').value = '';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <strong>❌ Ошибка!</strong><br>
+                        ${data.error || 'Неизвестная ошибка'}
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <strong>❌ Ошибка!</strong><br>
+                    ${error.message}
+                `;
+            } finally {
+                resetBtn.disabled = false;
+                resetBtn.textContent = '🗑️ Сбросить базу данных';
+            }
+        }
+        
+        // Enter для отправки
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                resetDatabase();
+            }
+        });
+    </script>
+</body>
+</html>

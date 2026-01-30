@@ -1,0 +1,4 @@
+# file: C:\Users\1\Desktop\Проект Бот Телеграм\skills_repository.py
+# hypothesis_version: 6.151.4
+
+['amount', 'last_reset_day', 'milestones_claimed', 'skill_data', 'skills', 'source', 'star_balance', 'star_history', 'timestamp', 'total_stars_spent']

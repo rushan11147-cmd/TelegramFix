@@ -1,0 +1,4 @@
+# file: C:\Users\1\Desktop\Проект Бот Телеграм\balance_system.py
+# hypothesis_version: 6.151.4
+
+[0.0, 30.0, 'User not found', 'amount', 'auto_cleanup', 'balance', 'balance_data', 'base_total', 'collector_percentage', 'collector_warning', 'cost', 'date', 'debt_amount', 'debt_collector', 'debt_days', 'debt_info', 'description', 'emoji', 'error', 'event', 'event_probability', 'event_type', 'events', 'expenses', 'final_total', 'financial_history', 'food', 'in_debt', 'income', 'job_type', 'last_expenses', 'max_cost', 'max_days', 'min_cost', 'money', 'monthly_rent', 'name', 'new', 'new_balance', 'new_tier', 'old', 'old_tier', 'poor', 'rent', 'source', 'success', 'tier', 'tier_change', 'tier_changed', 'tier_changes', 'tier_info', 'tier_multiplier', 'transport', 'type', 'wealth_tier', 'Коллектор', '👔']
