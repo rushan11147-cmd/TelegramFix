@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рулетка</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .slots {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .slot {
+            background: #f0f0f0;
+            border-radius: 15px;
+            padding: 20px;
+            font-size: 60px;
+            min-width: 100px;
+            text-align: center;
+            border: 3px solid #ddd;
+        }
+        .message {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #f39c12;
+            min-height: 30px;
+            margin: 20px 0;
+        }
+        .bet-section {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .bet-section h3 {
+            color: #555;
+            margin-bottom: 15px;
+        }
+        .bet-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .bet-btn {
+            padding: 15px 25px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            color: white;
+            transition: transform 0.2s;
+        }
+        .bet-btn:hover {
+            transform: scale(1.05);
+        }
+        .bet-btn:active {
+            transform: scale(0.95);
+        }
+        .bet-100 { background: linear-gradient(135deg, #27ae60, #229954); }
+        .bet-500 { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .bet-1000 { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .info {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+        .back-btn {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 20px;
+            background: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎰 Рулетка</h1>
+        
+        <div class="slots">
+            <div class="slot" id="slot1">🎰</div>
+            <div class="slot" id="slot2">🎰</div>
+            <div class="slot" id="slot3">🎰</div>
+        </div>
+        
+        <div class="message" id="message">Выбери ставку и крути!</div>
+        
+        <div class="bet-section">
+            <h3>Выбери ставку:</h3>
+            <div class="bet-buttons">
+                <button class="bet-btn bet-100" onclick="playGame(100)">💰 100₽</button>
+                <button class="bet-btn bet-500" onclick="playGame(500)">💎 500₽</button>
+                <button class="bet-btn bet-1000" onclick="playGame(1000)">👑 1000₽</button>
+            </div>
+        </div>
+        
+        <div class="info">
+            Шансы: 60% 😭 | 25% 🙂 | 10% 😄 | 5% 🤑
+        </div>
+        
+        <button class="back-btn" onclick="window.location.href='/'">← Назад в игру</button>
+    </div>
+    
+    <script>
+        const symbols = ['🍒', '🍋', '🍊', '🍇', '💎', '⭐', '7️⃣'];
+        
+        async function playGame(bet) {
+            const slot1 = document.getElementById('slot1');
+            const slot2 = document.getElementById('slot2');
+            const slot3 = document.getElementById('slot3');
+            const message = document.getElementById('message');
+            
+            message.textContent = '🎰 Крутим...';
+            message.style.color = '#f39c12';
+            
+            // Анимация
+            let count = 0;
+            const interval = setInterval(() => {
+                slot1.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                slot2.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                slot3.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                count++;
+                if (count > 15) clearInterval(interval);
+            }, 100);
+            
+            try {
+                const response = await fetch('/api/entertainment/roulette', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: localStorage.getItem('userId') || '123456',
+                        bet: bet 
+                    })
+                });
+                
+                setTimeout(async () => {
+                    if (response.ok) {
+                        const result = await response.json();
+                        
+                        // Показываем результат
+                        const symbolMap = {
+                            'cherry': '🍒', 'lemon': '🍋', 'orange': '🍊',
+                            'grape': '🍇', 'diamond': '💎', 'star': '⭐', 'seven': '7️⃣'
+                        };
+                        
+                        slot1.textContent = symbolMap[result.result.symbols[0]] || '🎰';
+                        slot2.textContent = symbolMap[result.result.symbols[1]] || '🎰';
+                        slot3.textContent = symbolMap[result.result.symbols[2]] || '🎰';
+                        
+                        message.textContent = result.message;
+                        message.style.color = result.result.won ? '#27ae60' : '#e74c3c';
+                    } else {
+                        const error = await response.json();
+                        message.textContent = error.error || 'Ошибка!';
+                        message.style.color = '#e74c3c';
+                    }
+                }, 1600);
+            } catch (error) {
+                setTimeout(() => {
+                    message.textContent = '❌ Ошибка соединения!';
+                    message.style.color = '#e74c3c';
+                }, 1600);
+            }
+        }
+    </script>
+</body>
+</html>

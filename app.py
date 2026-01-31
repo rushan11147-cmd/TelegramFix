@@ -33,6 +33,10 @@ from entertainment_system import EntertainmentManager
 # Import balance system
 from balance_system import BalanceManager
 
+# Import career system
+from career_system import CareerManager
+import career_config
+
 load_dotenv()
 
 # Настройка логирования
@@ -243,6 +247,14 @@ def load_user_data(user_id):
 # Инициализируем БД при старте
 init_db()
 
+# Инициализируем Career Manager с подключением к БД
+if USE_POSTGRES:
+    career_db_conn = psycopg2.connect(DATABASE_URL)
+else:
+    career_db_conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+
+career_manager = CareerManager(career_db_conn)
+
 # Валидация user_id
 import re
 
@@ -301,6 +313,7 @@ def get_user_data_safe(user_id):
             'player_name': None,
             'name_set': False,
             'tutorial_completed': False,
+            'profession_selected': False,
             'money': 500,
             'day': 1,
             'max_days': 30,
@@ -767,7 +780,19 @@ def health_check():
 
 @app.route('/')
 def index():
-    return render_template('simple.html')
+    return render_template('simple.html', v='2.0')
+
+@app.route('/roulette')
+def roulette_game():
+    return render_template('roulette_game.html')
+
+@app.route('/dice')
+def dice_game():
+    return render_template('dice_game.html')
+
+@app.route('/test_buttons.html')
+def test_buttons():
+    return render_template('test_buttons.html')
 
 @app.route('/debug')
 def debug():
@@ -775,7 +800,7 @@ def debug():
 
 @app.route('/simple')
 def simple():
-    return render_template('simple.html')
+    return render_template('simple.html', v='2.0')
 
 @app.route('/full')
 def full():
@@ -792,6 +817,10 @@ def test():
 @app.route('/test_simple')
 def test_simple():
     return render_template('test_simple.html')
+
+@app.route('/test-career')
+def test_career():
+    return render_template('test_career.html')
 
 @app.route('/hello')
 def hello():
@@ -1687,8 +1716,18 @@ def work():
     job = JOBS[current_job_id]
     
     # Базовый доход и трата энергии
-    income = job['base_income']
-    energy_cost = job['energy_cost']
+    # Если у игрока есть профессия - используем карьерную систему
+    career_state = career_manager.get_career_state(user_id)
+    if career_state:
+        # Используем зарплату из карьерной системы
+        income = career_manager.calculate_work_income(user_id, user)
+        # Применяем снижение энергии от карьерного уровня
+        energy_multiplier = career_manager.get_energy_cost_multiplier(user_id)
+        energy_cost = int(job['energy_cost'] * energy_multiplier)
+    else:
+        # Старая система (для совместимости)
+        income = job['base_income']
+        energy_cost = job['energy_cost']
     
     # Применяем эффекты бустеров
     if 'laptop' in user.get('owned_items', []) and current_job_id == 'office':
@@ -1752,6 +1791,10 @@ def work():
     user['worked_today'] = True  # Отмечаем что работал сегодня
     user['total_earned'] = user.get('total_earned', 0) + income
     user['work_count'] = user.get('work_count', 0) + 1
+    
+    # Записываем работу в карьерную систему
+    if career_state:
+        career_manager.record_work_action(user_id, income)
     
     # Даем очки навыков (1 очко за 5 работ)
     if user['work_count'] % 5 == 0:
@@ -2594,6 +2637,115 @@ def get_financial_history():
     except Exception as e:
         logger.error(f"Error getting financial history: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+# ============================================
+# CAREER PROGRESSION API
+# ============================================
+
+@app.route('/api/career/professions', methods=['GET'])
+def get_professions():
+    """Получить список доступных профессий"""
+    try:
+        professions = []
+        for prof_id in career_config.get_all_professions():
+            prof = career_config.get_profession(prof_id)
+            professions.append({
+                'id': prof['id'],
+                'name': prof['name'],
+                'name_ru': prof['name_ru'],
+                'emoji': prof['emoji'],
+                'description': prof['description'],
+                'starting_salary': prof['starting_salary'],
+                'primary_skills': prof.get('primary_skills', [])
+            })
+        return jsonify({'professions': professions})
+    except Exception as e:
+        logger.error(f"Error getting professions: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/career/select', methods=['POST'])
+@limiter.limit("5 per minute")
+def select_profession():
+    """Выбрать профессию"""
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        user_id = data.get('user_id')
+        profession = data.get('profession')
+        
+        if not user_id or not profession:
+            return jsonify({'error': 'Missing user_id or profession'}), 400
+        
+        # Select profession
+        career_state = career_manager.select_profession(user_id, profession)
+        
+        # Update user data with profession flag
+        user_data = get_user_data_safe(user_id)
+        user_data['profession_selected'] = True
+        save_user_data_safe(user_id, user_data)
+        
+        return jsonify({
+            'success': True,
+            'profession': profession,
+            'career_level': career_state.career_level,
+            'salary': career_state.get_base_salary()
+        })
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error selecting profession: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+
+@app.route('/api/career/info', methods=['GET'])
+def get_career_info():
+    """Получить информацию о карьере игрока"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Missing user_id'}), 400
+        
+        user_data = get_user_data_safe(user_id)
+        career_info = career_manager.get_career_info(user_id, user_data)
+        
+        return jsonify(career_info)
+    except Exception as e:
+        logger.error(f"Error getting career info: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/career/promote', methods=['POST'])
+@limiter.limit("10 per minute")
+def promote_career():
+    """Повысить игрока по карьерной лестнице"""
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        user_id = data.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Missing user_id'}), 400
+        
+        user_data = get_user_data_safe(user_id)
+        career_state = career_manager.promote_player(user_id, user_data)
+        
+        return jsonify({
+            'success': True,
+            'new_level': career_state.career_level,
+            'new_level_name': career_state.get_current_level_name(),
+            'new_salary': career_state.get_base_salary(),
+            'message': f'Поздравляем с повышением! Теперь вы {career_state.get_current_level_name()}'
+        })
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error promoting player: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 # ============================================

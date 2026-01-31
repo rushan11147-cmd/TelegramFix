@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест API карьеры</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .profession-card {
+            border: 2px solid #3498db;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            background: #ecf0f1;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Тест системы карьеры</h1>
+    
+    <div class="test-section">
+        <h2>1. Тест API /api/career/professions</h2>
+        <button onclick="testProfessionsAPI()">Загрузить профессии</button>
+        <div id="apiResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Отображение профессий</h2>
+        <button onclick="displayProfessions()">Показать карточки профессий</button>
+        <div id="professionsDisplay"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Выбор профессии</h2>
+        <input type="text" id="testUserId" placeholder="user_id (например: test123)" value="test123" style="padding: 8px; width: 200px;">
+        <button onclick="testSelectProfession()">Выбрать Курьера</button>
+        <div id="selectResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Информация о карьере</h2>
+        <button onclick="testCareerInfo()">Получить инфо о карьере</button>
+        <div id="careerInfoResult"></div>
+    </div>
+
+    <script>
+        let professionsData = null;
+        
+        async function testProfessionsAPI() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = '<p>Загрузка...</p>';
+            
+            try {
+                const response = await fetch('/api/career/professions');
+                const data = await response.json();
+                
+                professionsData = data;
+                
+                resultDiv.innerHTML = `
+                    <p class="success">✅ API работает!</p>
+                    <p>Получено профессий: ${data.professions ? data.professions.length : 0}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Ошибка: ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function displayProfessions() {
+            const displayDiv = document.getElementById('professionsDisplay');
+            
+            if (!professionsData || !professionsData.professions) {
+                displayDiv.innerHTML = '<p class="error">Сначала загрузите профессии (кнопка выше)</p>';
+                return;
+            }
+            
+            const professions = professionsData.professions;
+            
+            let html = '<h3>Найдено профессий: ' + professions.length + '</h3>';
+            
+            professions.forEach(prof => {
+                const skillNames = {
+                    'speed': '⚡ Скорость',
+                    'intelligence': '🧠 Интеллект',
+                    'charisma': '💬 Харизма',
+                    'luck': '🍀 Удача'
+                };
+                
+                const skillsHTML = prof.primary_skills ? 
+                    prof.primary_skills.map(skill => skillNames[skill] || skill).join(', ') : 
+                    'Нет данных о навыках';
+                
+                html += `
+                    <div class="profession-card">
+                        <h3>${prof.emoji} ${prof.name_ru}</h3>
+                        <p><strong>ID:</strong> ${prof.id}</p>
+                        <p><strong>Описание:</strong> ${prof.description}</p>
+                        <p><strong>Зарплата:</strong> ${prof.starting_salary}₽</p>
+                        <p><strong>Навыки:</strong> ${skillsHTML}</p>
+                    </div>
+                `;
+            });
+            
+            displayDiv.innerHTML = html;
+        }
+        
+        async function testSelectProfession() {
+            const resultDiv = document.getElementById('selectResult');
+            const userId = document.getElementById('testUserId').value;
+            
+            if (!userId) {
+                resultDiv.innerHTML = '<p class="error">Введите user_id</p>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>Отправка запроса...</p>';
+            
+            try {
+                const response = await fetch('/api/career/select', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        profession: 'courier'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Профессия выбрана!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ Ошибка: ${data.error || 'Неизвестная ошибка'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Ошибка: ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function testCareerInfo() {
+            const resultDiv = document.getElementById('careerInfoResult');
+            const userId = document.getElementById('testUserId').value;
+            
+            if (!userId) {
+                resultDiv.innerHTML = '<p class="error">Введите user_id</p>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>Загрузка...</p>';
+            
+            try {
+                const response = await fetch(`/api/career/info?user_id=${userId}`);
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Данные получены!</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Ошибка: ${error.message}</p>
+                `;
+            }
+        }
+        
+        // Автоматически загружаем профессии при открытии страницы
+        window.onload = function() {
+            testProfessionsAPI();
+        };
+    </script>
+</body>
+</html>

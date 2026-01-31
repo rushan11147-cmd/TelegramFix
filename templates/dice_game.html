@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кости</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .dice-area {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .dice {
+            font-size: 80px;
+        }
+        .sum {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #f39c12;
+            margin: 10px 0;
+        }
+        .message {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #f39c12;
+            min-height: 25px;
+            margin: 20px 0;
+        }
+        .bet-section {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .bet-section h3 {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .bet-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .bet-btn {
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            color: white;
+            transition: transform 0.2s;
+        }
+        .bet-btn:hover {
+            transform: scale(1.05);
+        }
+        .bet-btn:active {
+            transform: scale(0.95);
+        }
+        .bet-100 { background: linear-gradient(135deg, #27ae60, #229954); }
+        .bet-500 { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .bet-1000 { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .choice-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .choice-btn {
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            color: white;
+            transition: transform 0.2s;
+            flex: 1;
+            min-width: 120px;
+        }
+        .choice-btn:hover {
+            transform: scale(1.05);
+        }
+        .choice-low { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .choice-seven { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .choice-high { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .info {
+            text-align: center;
+            color: #888;
+            font-size: 13px;
+            margin-top: 15px;
+        }
+        .back-btn {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 20px;
+            background: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .current-bet {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #27ae60;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎲 Кости</h1>
+        
+        <div class="dice-area">
+            <div class="dice" id="dice1">🎲</div>
+            <div class="dice" id="dice2">🎲</div>
+        </div>
+        
+        <div class="sum" id="sum">Сумма: -</div>
+        <div class="message" id="message">Выбери ставку и диапазон!</div>
+        
+        <div class="bet-section">
+            <h3>Выбери ставку:</h3>
+            <div class="bet-buttons">
+                <button class="bet-btn bet-100" onclick="setBet(100)">💰 100₽</button>
+                <button class="bet-btn bet-500" onclick="setBet(500)">💎 500₽</button>
+                <button class="bet-btn bet-1000" onclick="setBet(1000)">👑 1000₽</button>
+            </div>
+            <div class="current-bet" id="currentBet">Ставка: 100₽</div>
+        </div>
+        
+        <div class="bet-section">
+            <h3>Выбери диапазон:</h3>
+            <div class="choice-buttons">
+                <button class="choice-btn choice-low" onclick="playGame('low')">
+                    Низкие<br><small>2-6 (x2.5)</small>
+                </button>
+                <button class="choice-btn choice-seven" onclick="playGame('seven')">
+                    Семерка<br><small>7 (x6)</small>
+                </button>
+                <button class="choice-btn choice-high" onclick="playGame('high')">
+                    Высокие<br><small>8-12 (x2.5)</small>
+                </button>
+            </div>
+        </div>
+        
+        <div class="info">
+            💡 Удача увеличивает шанс выигрыша!
+        </div>
+        
+        <button class="back-btn" onclick="window.location.href='/'">← Назад в игру</button>
+    </div>
+    
+    <script>
+        let currentBet = 100;
+        const diceEmojis = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        
+        function setBet(amount) {
+            currentBet = amount;
+            document.getElementById('currentBet').textContent = `Ставка: ${amount}₽`;
+        }
+        
+        async function playGame(choice) {
+            const dice1 = document.getElementById('dice1');
+            const dice2 = document.getElementById('dice2');
+            const sum = document.getElementById('sum');
+            const message = document.getElementById('message');
+            
+            message.textContent = '🎲 Бросаем кости...';
+            message.style.color = '#f39c12';
+            sum.textContent = 'Сумма: ?';
+            
+            // Анимация
+            let count = 0;
+            const interval = setInterval(() => {
+                dice1.textContent = diceEmojis[Math.floor(Math.random() * 6)];
+                dice2.textContent = diceEmojis[Math.floor(Math.random() * 6)];
+                count++;
+                if (count > 12) clearInterval(interval);
+            }, 100);
+            
+            try {
+                const response = await fetch('/api/entertainment/dice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: localStorage.getItem('userId') || '123456',
+                        bet: currentBet,
+                        choice: choice
+                    })
+                });
+                
+                setTimeout(async () => {
+                    if (response.ok) {
+                        const result = await response.json();
+                        
+                        // Показываем результат
+                        dice1.textContent = diceEmojis[result.result.dice1 - 1];
+                        dice2.textContent = diceEmojis[result.result.dice2 - 1];
+                        sum.textContent = `Сумма: ${result.result.sum}`;
+                        sum.style.color = result.result.won ? '#27ae60' : '#e74c3c';
+                        
+                        message.textContent = result.message;
+                        message.style.color = result.result.won ? '#27ae60' : '#e74c3c';
+                    } else {
+                        const error = await response.json();
+                        message.textContent = error.error || 'Ошибка!';
+                        message.style.color = '#e74c3c';
+                    }
+                }, 1300);
+            } catch (error) {
+                setTimeout(() => {
+                    message.textContent = '❌ Ошибка соединения!';
+                    message.style.color = '#e74c3c';
+                }, 1300);
+            }
+        }
+    </script>
+</body>
+</html>
