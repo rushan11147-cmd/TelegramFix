@@ -250,10 +250,10 @@ init_db()
 # Инициализируем Career Manager с подключением к БД
 if USE_POSTGRES:
     career_db_conn = psycopg2.connect(DATABASE_URL)
+    career_manager = CareerManager(career_db_conn, use_postgres=True)
 else:
     career_db_conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-
-career_manager = CareerManager(career_db_conn)
+    career_manager = CareerManager(career_db_conn, use_postgres=False)
 
 # Валидация user_id
 import re

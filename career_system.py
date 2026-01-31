@@ -16,7 +16,7 @@ import career_config
 @dataclass
 class CareerState:
     """Represents the current career state of a player."""
-    player_id: int
+    player_id: str  # Changed from int to str to match user_id
     profession: str
     career_level: int = 0
     work_actions_completed: int = 0
@@ -46,7 +46,7 @@ class CareerState:
             promotion_history = json.loads(promotion_history)
         
         return cls(
-            player_id=data['player_id'],
+            player_id=str(data['player_id']),  # Ensure it's a string
             profession=data['profession'],
             career_level=data.get('career_level', 0),
             work_actions_completed=data.get('work_actions_completed', 0),
@@ -71,14 +71,16 @@ class CareerManager:
     promotion evaluation, and career state management.
     """
     
-    def __init__(self, db_connection):
+    def __init__(self, db_connection, use_postgres=False):
         """
         Initialize the career manager.
         
         Args:
             db_connection: Database connection for persistence
+            use_postgres: Whether using PostgreSQL (True) or SQLite (False)
         """
         self.db = db_connection
+        self.use_postgres = use_postgres
         self._ensure_table_exists()
     
     def _ensure_table_exists(self):
@@ -86,7 +88,7 @@ class CareerManager:
         cursor = self.db.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS career_state (
-                player_id INTEGER PRIMARY KEY,
+                player_id TEXT PRIMARY KEY,
                 profession TEXT NOT NULL,
                 career_level INTEGER NOT NULL DEFAULT 0,
                 work_actions_completed INTEGER NOT NULL DEFAULT 0,
@@ -98,12 +100,12 @@ class CareerManager:
         ''')
         self.db.commit()
     
-    def select_profession(self, player_id: int, profession: str) -> CareerState:
+    def select_profession(self, player_id: str, profession: str) -> CareerState:
         """
         Set the player's initial profession.
         
         Args:
-            player_id: Unique identifier for the player
+            player_id: Unique identifier for the player (string)
             profession: One of the profession IDs from career_config
         
         Returns:
@@ -117,7 +119,7 @@ class CareerManager:
         
         # Create new career state
         career_state = CareerState(
-            player_id=player_id,
+            player_id=str(player_id),
             profession=profession,
             career_level=0,
             work_actions_completed=0,
@@ -127,41 +129,77 @@ class CareerManager:
         
         # Save to database
         cursor = self.db.cursor()
-        cursor.execute('''
-            INSERT OR REPLACE INTO career_state 
-            (player_id, profession, career_level, work_actions_completed, 
-             total_money_earned, promotion_history, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            player_id,
-            profession,
-            0,
-            0,
-            0,
-            json.dumps([]),
-            datetime.now().isoformat()
-        ))
+        
+        if self.use_postgres:
+            # PostgreSQL syntax
+            cursor.execute('''
+                INSERT INTO career_state 
+                (player_id, profession, career_level, work_actions_completed, 
+                 total_money_earned, promotion_history, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (player_id) DO UPDATE 
+                SET profession = EXCLUDED.profession,
+                    career_level = EXCLUDED.career_level,
+                    work_actions_completed = EXCLUDED.work_actions_completed,
+                    total_money_earned = EXCLUDED.total_money_earned,
+                    promotion_history = EXCLUDED.promotion_history,
+                    updated_at = EXCLUDED.updated_at
+            ''', (
+                str(player_id),
+                profession,
+                0,
+                0,
+                0,
+                json.dumps([]),
+                datetime.now().isoformat()
+            ))
+        else:
+            # SQLite syntax
+            cursor.execute('''
+                INSERT OR REPLACE INTO career_state 
+                (player_id, profession, career_level, work_actions_completed, 
+                 total_money_earned, promotion_history, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                str(player_id),
+                profession,
+                0,
+                0,
+                0,
+                json.dumps([]),
+                datetime.now().isoformat()
+            ))
+        
         self.db.commit()
         
         return career_state
     
-    def get_career_state(self, player_id: int) -> Optional[CareerState]:
+    def get_career_state(self, player_id: str) -> Optional[CareerState]:
         """
         Get the current career state for a player.
         
         Args:
-            player_id: Unique identifier for the player
+            player_id: Unique identifier for the player (string)
         
         Returns:
             CareerState object or None if not found
         """
         cursor = self.db.cursor()
-        cursor.execute('''
-            SELECT player_id, profession, career_level, work_actions_completed,
-                   total_money_earned, promotion_history
-            FROM career_state
-            WHERE player_id = ?
-        ''', (player_id,))
+        
+        if self.use_postgres:
+            cursor.execute('''
+                SELECT player_id, profession, career_level, work_actions_completed,
+                       total_money_earned, promotion_history
+                FROM career_state
+                WHERE player_id = %s
+            ''', (str(player_id),))
+        else:
+            cursor.execute('''
+                SELECT player_id, profession, career_level, work_actions_completed,
+                       total_money_earned, promotion_history
+                FROM career_state
+                WHERE player_id = ?
+            ''', (str(player_id),))
         
         row = cursor.fetchone()
         if not row:
@@ -178,12 +216,12 @@ class CareerManager:
         
         return CareerState.from_dict(data)
     
-    def record_work_action(self, player_id: int, money_earned: int = 0):
+    def record_work_action(self, player_id: str, money_earned: int = 0):
         """
         Record that a work action was completed and update metrics.
         
         Args:
-            player_id: Unique identifier for the player
+            player_id: Unique identifier for the player (string)
             money_earned: Amount of money earned from this work action
         """
         career_state = self.get_career_state(player_id)
@@ -195,26 +233,42 @@ class CareerManager:
         
         # Save updated state
         cursor = self.db.cursor()
-        cursor.execute('''
-            UPDATE career_state
-            SET work_actions_completed = ?,
-                total_money_earned = ?,
-                updated_at = ?
-            WHERE player_id = ?
-        ''', (
-            career_state.work_actions_completed,
-            career_state.total_money_earned,
-            datetime.now().isoformat(),
-            player_id
-        ))
+        
+        if self.use_postgres:
+            cursor.execute('''
+                UPDATE career_state
+                SET work_actions_completed = %s,
+                    total_money_earned = %s,
+                    updated_at = %s
+                WHERE player_id = %s
+            ''', (
+                career_state.work_actions_completed,
+                career_state.total_money_earned,
+                datetime.now().isoformat(),
+                str(player_id)
+            ))
+        else:
+            cursor.execute('''
+                UPDATE career_state
+                SET work_actions_completed = ?,
+                    total_money_earned = ?,
+                    updated_at = ?
+                WHERE player_id = ?
+            ''', (
+                career_state.work_actions_completed,
+                career_state.total_money_earned,
+                datetime.now().isoformat(),
+                str(player_id)
+            ))
+        
         self.db.commit()
     
-    def calculate_work_income(self, player_id: int, player_data: dict) -> int:
+    def calculate_work_income(self, player_id: str, player_data: dict) -> int:
         """
         Calculate income for a work action based on career level and bonuses.
         
         Args:
-            player_id: Unique identifier for the player
+            player_id: Unique identifier for the player (string)
             player_data: Dictionary with player stats (skills, mood, etc.)
         
         Returns:
@@ -253,12 +307,12 @@ class CareerManager:
         
         return total_income
     
-    def get_energy_cost_multiplier(self, player_id: int) -> float:
+    def get_energy_cost_multiplier(self, player_id: str) -> float:
         """
         Get the energy cost multiplier for the player's career level.
         
         Args:
-            player_id: Unique identifier for the player
+            player_id: Unique identifier for the player (string)
         
         Returns:
             Multiplier to apply to base energy cost (e.g., 0.95 for 5% reduction)
@@ -279,12 +333,12 @@ class CareerManager:
         return 1.0 - reduction
 
     
-    def get_career_info(self, player_id: int, player_data: dict) -> dict:
+    def get_career_info(self, player_id: str, player_data: dict) -> dict:
         """
         Get comprehensive career information for display.
         
         Args:
-            player_id: Unique identifier for the player
+            player_id: Unique identifier for the player (string)
             player_data: Dictionary with player stats (days_survived, skills, etc.)
         
         Returns:
@@ -342,12 +396,12 @@ class CareerManager:
         
         return result
     
-    def check_promotion_eligibility(self, player_id: int, player_data: dict) -> dict:
+    def check_promotion_eligibility(self, player_id: str, player_data: dict) -> dict:
         """
         Check if player is eligible for promotion.
         
         Args:
-            player_id: Unique identifier for the player
+            player_id: Unique identifier for the player (string)
             player_data: Dictionary with player stats (days_survived, skills, etc.)
         
         Returns:
@@ -440,12 +494,12 @@ class CareerManager:
         
         return result
     
-    def promote_player(self, player_id: int, player_data: dict) -> CareerState:
+    def promote_player(self, player_id: str, player_data: dict) -> CareerState:
         """
         Promote player to next career level.
         
         Args:
-            player_id: Unique identifier for the player
+            player_id: Unique identifier for the player (string)
             player_data: Dictionary with player stats
         
         Returns:
@@ -478,18 +532,34 @@ class CareerManager:
         
         # Save to database
         cursor = self.db.cursor()
-        cursor.execute('''
-            UPDATE career_state
-            SET career_level = ?,
-                promotion_history = ?,
-                updated_at = ?
-            WHERE player_id = ?
-        ''', (
-            career_state.career_level,
-            json.dumps(career_state.promotion_history),
-            datetime.now().isoformat(),
-            player_id
-        ))
+        
+        if self.use_postgres:
+            cursor.execute('''
+                UPDATE career_state
+                SET career_level = %s,
+                    promotion_history = %s,
+                    updated_at = %s
+                WHERE player_id = %s
+            ''', (
+                career_state.career_level,
+                json.dumps(career_state.promotion_history),
+                datetime.now().isoformat(),
+                str(player_id)
+            ))
+        else:
+            cursor.execute('''
+                UPDATE career_state
+                SET career_level = ?,
+                    promotion_history = ?,
+                    updated_at = ?
+                WHERE player_id = ?
+            ''', (
+                career_state.career_level,
+                json.dumps(career_state.promotion_history),
+                datetime.now().isoformat(),
+                str(player_id)
+            ))
+        
         self.db.commit()
         
         return career_state
